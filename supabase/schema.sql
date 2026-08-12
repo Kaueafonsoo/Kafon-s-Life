@@ -3,6 +3,9 @@
 -- Cria as 4 tabelas e trava cada uma para que um usuário só veja e altere as
 -- próprias linhas (Row Level Security por auth.uid()). Sem isso, qualquer
 -- pessoa com a chave pública do projeto conseguiria ler os dados de todo mundo.
+--
+-- Seguro rodar mais de uma vez: "drop policy if exists" antes de cada
+-- "create policy" evita o erro "policy already exists" se você rodar de novo.
 
 create extension if not exists "pgcrypto";
 
@@ -22,6 +25,7 @@ create table if not exists lancamentos (
 
 alter table lancamentos enable row level security;
 
+drop policy if exists "lancamentos: dono pode tudo" on lancamentos;
 create policy "lancamentos: dono pode tudo"
   on lancamentos for all
   using (user_id = auth.uid())
@@ -39,6 +43,7 @@ create table if not exists orcamentos (
 
 alter table orcamentos enable row level security;
 
+drop policy if exists "orcamentos: dono pode tudo" on orcamentos;
 create policy "orcamentos: dono pode tudo"
   on orcamentos for all
   using (user_id = auth.uid())
@@ -58,6 +63,7 @@ create table if not exists metas (
 
 alter table metas enable row level security;
 
+drop policy if exists "metas: dono pode tudo" on metas;
 create policy "metas: dono pode tudo"
   on metas for all
   using (user_id = auth.uid())
@@ -75,6 +81,7 @@ create table if not exists config (
 
 alter table config enable row level security;
 
+drop policy if exists "config: dono pode tudo" on config;
 create policy "config: dono pode tudo"
   on config for all
   using (user_id = auth.uid())
