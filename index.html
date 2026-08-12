@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>GRANA — Finanças</title>
+<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento e metas." />
+<meta name="theme-color" content="#E7E5E4" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GRANA" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<!-- Tela de login/cadastro -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="brand auth-brand">
+      <span class="brand-mark"><img src="icons/icon-192.png" alt="" /></span>
+      <span class="brand-name">GRANA</span>
+    </div>
+
+    <p class="auth-message" id="auth-config-warning" hidden></p>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab is-active" id="auth-toggle-entrar">Entrar</button>
+      <button type="button" class="auth-tab" id="auth-toggle-cadastro">Criar conta</button>
+    </div>
+
+    <h2 class="auth-title" id="auth-title">Entrar</h2>
+
+    <form id="form-auth">
+      <div class="form-row">
+        <label for="auth-email">E-mail</label>
+        <input type="email" id="auth-email" autocomplete="email" required />
+      </div>
+      <div class="form-row">
+        <label for="auth-password">Senha</label>
+        <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required />
+      </div>
+      <p class="auth-message" id="auth-message" hidden></p>
+      <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+
+  <!-- Desktop / macOS sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="icons/icon-192.png" alt="" /></span>
+      <span class="brand-name">GRANA</span>
+    </div>
+    <button class="nav-item is-active" data-tab="resumo">
+      <svg viewBox="0 0 24 24"><path d="M4 19h16M7 15v-6M12 15V6M17 15v-3"/></svg>
+      <span>Resumo Mensal</span>
+    </button>
+    <button class="nav-item" data-tab="lancamentos">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Lançamentos</span>
+    </button>
+    <button class="nav-item" data-tab="orcamento">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+      <span>Orçamento</span>
+    </button>
+    <button class="nav-item" data-tab="metas">
+      <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
+      <span>Metas</span>
+    </button>
+    <div class="sidebar-footer">
+      <button class="nav-item nav-item-ghost btn-ajustes">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 3.68 1.65 1.65 0 009 2.17V2a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 8v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Ajustes</span>
+      </button>
+      <button class="nav-item nav-item-ghost btn-export">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+        <span>Exportar dados</span>
+      </button>
+      <button class="nav-item nav-item-ghost btn-import">
+        <svg viewBox="0 0 24 24"><path d="M12 21V9m0 0l-4 4m4-4l4 4M4 3h16"/></svg>
+        <span>Importar dados</span>
+      </button>
+      <button class="nav-item nav-item-ghost btn-sair">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        <span>Sair</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="content">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <p class="greeting" id="greeting"></p>
+        <h1 id="page-title">Resumo Mensal</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="btn-privacidade" aria-label="Ocultar valores" title="Ocultar valores">
+          <svg viewBox="0 0 24 24" id="icon-privacidade"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <div class="month-switcher" id="month-switcher">
+          <button id="month-prev" aria-label="Mês anterior">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span id="month-label">Agosto 2026</span>
+          <button id="month-next" aria-label="Próximo mês">
+            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- RESUMO MENSAL -->
+    <section class="tab-panel is-active" id="tab-resumo">
+      <div class="cards-row">
+        <div class="stat-card stat-income">
+          <span class="stat-label">Receitas do mês</span>
+          <span class="stat-value" id="stat-receitas">R$ 0,00</span>
+        </div>
+        <div class="stat-card stat-expense">
+          <span class="stat-label">Despesas do mês</span>
+          <span class="stat-value" id="stat-despesas">R$ 0,00</span>
+        </div>
+        <div class="stat-card stat-balance">
+          <span class="stat-label">Saldo</span>
+          <span class="stat-value" id="stat-saldo">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div class="payday-card" id="payday-card" hidden>
+        <div class="payday-block">
+          <span class="payday-value" id="payday-days">—</span>
+          <span class="payday-label" id="payday-days-label">até o próximo salário</span>
+        </div>
+        <div class="payday-divider"></div>
+        <div class="payday-block">
+          <span class="payday-value" id="payday-perday">—</span>
+          <span class="payday-label">disponível por dia até lá</span>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <h2>Gastos por categoria</h2>
+          <div class="chart-wrap" id="chart-pie"></div>
+          <div class="legend" id="legend-pie"></div>
+        </div>
+        <div class="panel">
+          <h2>Comparativo mês a mês</h2>
+          <div class="chart-wrap" id="chart-bar"></div>
+          <div class="legend legend-inline">
+            <span class="legend-dot dot-income"></span> Receitas
+            <span class="legend-dot dot-expense"></span> Despesas
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LANÇAMENTOS -->
+    <section class="tab-panel" id="tab-lancamentos">
+      <div class="toolbar">
+        <input type="search" id="search-lanc" placeholder="Buscar por descrição..." />
+        <select id="filter-categoria">
+          <option value="">Todas categorias</option>
+        </select>
+        <select id="filter-tipo">
+          <option value="">Todos tipos</option>
+          <option value="receita">Receita</option>
+          <option value="despesa">Despesa</option>
+        </select>
+        <button class="btn btn-primary" id="btn-novo-lancamento">+ Novo lançamento</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="lanc-table" id="lanc-table">
+          <thead>
+            <tr>
+              <th data-sort="data">Data</th>
+              <th data-sort="descricao">Descrição</th>
+              <th data-sort="categoria">Categoria</th>
+              <th data-sort="tipo">Tipo</th>
+              <th data-sort="formaPagamento">Pagamento</th>
+              <th data-sort="valor" class="col-right">Valor</th>
+              <th data-sort="status">Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="lanc-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="lanc-empty" hidden>
+          <p>Nenhum lançamento neste mês.</p>
+          <button class="btn btn-primary" id="btn-novo-lancamento-empty">+ Novo lançamento</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORÇAMENTO -->
+    <section class="tab-panel" id="tab-orcamento">
+      <p class="section-hint">Defina o valor planejado por categoria para o mês. O indicador mostra o quanto já foi gasto em relação ao planejado.</p>
+      <div class="budget-list" id="budget-list"></div>
+    </section>
+
+    <!-- METAS -->
+    <section class="tab-panel" id="tab-metas">
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary" id="btn-nova-meta">+ Nova meta</button>
+      </div>
+      <div class="goals-grid" id="goals-grid"></div>
+      <div class="empty-state" id="goals-empty" hidden>
+        <p>Nenhuma meta cadastrada ainda.</p>
+        <button class="btn btn-primary" id="btn-nova-meta-empty">+ Nova meta</button>
+      </div>
+    </section>
+
+    <div class="data-actions">
+      <button class="btn btn-ghost btn-ajustes">Ajustes</button>
+      <button class="btn btn-ghost btn-export">Exportar</button>
+      <button class="btn btn-ghost btn-import">Importar</button>
+      <button class="btn btn-ghost btn-sair">Sair</button>
+    </div>
+
+    <input type="file" id="import-file" accept="application/json" hidden />
+  </main>
+
+  <!-- Mobile bottom tab bar -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tabbar-item is-active" data-tab="resumo">
+      <svg viewBox="0 0 24 24"><path d="M4 19h16M7 15v-6M12 15V6M17 15v-3"/></svg>
+      <span>Resumo</span>
+    </button>
+    <button class="tabbar-item" data-tab="lancamentos">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Lançamentos</span>
+    </button>
+    <button class="tabbar-item" data-tab="orcamento">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+      <span>Orçamento</span>
+    </button>
+    <button class="tabbar-item" data-tab="metas">
+      <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
+      <span>Metas</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- Modal: Lançamento -->
+<div class="modal-overlay" id="modal-lancamento" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-lancamento-title">Novo lançamento</h3>
+      <button class="modal-close" data-close-modal="modal-lancamento">&times;</button>
+    </div>
+    <form id="form-lancamento">
+      <input type="hidden" id="lanc-id" />
+      <div class="form-row">
+        <label for="lanc-data">Data</label>
+        <input type="date" id="lanc-data" required />
+      </div>
+      <div class="form-row">
+        <label for="lanc-descricao">Descrição</label>
+        <input type="text" id="lanc-descricao" placeholder="Ex: Supermercado" required />
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="lanc-tipo">Tipo</label>
+          <select id="lanc-tipo" required>
+            <option value="despesa">Despesa</option>
+            <option value="receita">Receita</option>
+          </select>
+        </div>
+        <div>
+          <label for="lanc-categoria">Categoria</label>
+          <select id="lanc-categoria" required></select>
+        </div>
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="lanc-forma">Forma de Pagamento</label>
+          <select id="lanc-forma" required></select>
+        </div>
+        <div>
+          <label for="lanc-status">Status</label>
+          <select id="lanc-status" required>
+            <option value="pago">Pago</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="lanc-valor">Valor (R$)</label>
+        <input type="number" id="lanc-valor" step="0.01" min="0" placeholder="0,00" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-lancamento" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-lancamento">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Meta -->
+<div class="modal-overlay" id="modal-meta" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-meta-title">Nova meta</h3>
+      <button class="modal-close" data-close-modal="modal-meta">&times;</button>
+    </div>
+    <form id="form-meta">
+      <input type="hidden" id="meta-id" />
+      <div class="form-row">
+        <label>Ícone</label>
+        <div class="emoji-picker" id="emoji-picker"></div>
+        <input type="hidden" id="meta-emoji" />
+      </div>
+      <div class="form-row">
+        <label for="meta-nome">Objetivo</label>
+        <input type="text" id="meta-nome" placeholder="Ex: Reserva de emergência" required />
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="meta-valor-meta">Valor meta (R$)</label>
+          <input type="number" id="meta-valor-meta" step="0.01" min="0" required />
+        </div>
+        <div>
+          <label for="meta-valor-atual">Valor atual (R$)</label>
+          <input type="number" id="meta-valor-atual" step="0.01" min="0" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="meta-data">Data prevista</label>
+        <input type="date" id="meta-data" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-meta" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-meta">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Ajustes -->
+<div class="modal-overlay" id="modal-ajustes" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Ajustes</h3>
+      <button class="modal-close" data-close-modal="modal-ajustes">&times;</button>
+    </div>
+    <form id="form-ajustes">
+      <div class="form-row">
+        <label for="cfg-nome">Seu nome</label>
+        <input type="text" id="cfg-nome" placeholder="Ex: Kauê" />
+        <span class="field-hint">Usado na saudação do topo.</span>
+      </div>
+      <div class="form-row">
+        <label for="cfg-dia-pagamento">Dia do salário</label>
+        <input type="number" id="cfg-dia-pagamento" min="1" max="31" placeholder="5" />
+        <span class="field-hint">O Resumo mostra quantos dias faltam e quanto sobra por dia. Deixe vazio para esconder.</span>
+      </div>
+      <div class="form-row">
+        <label for="cfg-categorias">Suas categorias</label>
+        <textarea id="cfg-categorias" rows="6" spellcheck="false"></textarea>
+        <span class="field-hint">Uma por linha. Aparecem no menu de lançamentos e no orçamento.</span>
+      </div>
+      <div class="form-row">
+        <label for="cfg-formas">Suas formas de pagamento</label>
+        <textarea id="cfg-formas" rows="5" spellcheck="false"></textarea>
+        <span class="field-hint">Uma por linha. Use os nomes reais dos seus bancos e cartões.</span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-ajustes">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/vendor/supabase.js" defer></script>
+<script src="js/supabase-config.js" defer></script>
+<script src="js/charts.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>

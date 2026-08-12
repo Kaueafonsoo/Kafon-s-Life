@@ -1,0 +1,10 @@
+# Certificado local (chaves privadas) — nunca deve ir para um repositório,
+# nem privado. Só serve para o servidor HTTPS de desenvolvimento no Mac.
+certs/
+
+# macOS
+.DS_Store
+
+# Arquivos de trabalho temporários
+*.tmp
+_*.html
