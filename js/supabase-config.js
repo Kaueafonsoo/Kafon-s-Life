@@ -3,5 +3,5 @@
    público — o acesso aos dados é protegido pelas regras de RLS no banco
    (cada usuário só enxerga as próprias linhas), não pelo sigilo desta chave. */
 
-const SUPABASE_URL = 'COLE_AQUI_A_URL_DO_SEU_PROJETO';
-const SUPABASE_ANON_KEY = 'COLE_AQUI_A_ANON_KEY';
+const SUPABASE_URL = 'https://sepfduogwhekhrjonoyp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_sk2_YrqmI-O7DUGcnhgbDg_hOAU07kg';
