@@ -182,6 +182,25 @@ input, select { font-family: inherit; }
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
 }
 
+/* ===== Insight automático ===== */
+.insight-card[hidden] { display: none; }
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-light);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+.insight-card svg {
+  width: 19px; height: 19px; flex-shrink: 0; margin-top: 1px;
+  fill: none; stroke: var(--primary-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.insight-card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--primary-text); }
+.insight-card p strong { font-weight: 700; }
+
 /* ===== Contagem para o salário ===== */
 .payday-card {
   display: flex;
@@ -323,6 +342,8 @@ select {
 .btn-ghost { background: var(--primary-light); color: var(--primary-text); }
 .btn-ghost:hover { background: var(--primary-dark); color: var(--on-primary); }
 .btn-danger { color: var(--danger); }
+.btn-danger-solid { background: var(--danger); color: #fff; }
+.btn-danger-solid:hover { background: #921616; }
 
 /* ===== Table ===== */
 .table-wrap {
@@ -597,10 +618,23 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-desejo { padding: 18px 22px 22px; }
+.modal-confirm-body { padding: 18px 22px 22px; }
+.modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
+.form-row[hidden] { display: none; }
 .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-row label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
 .field-hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.45; }
+.repeticao-fim {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: var(--primary-light);
+  color: var(--primary-text);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.repeticao-fim[hidden] { display: none; }
 
 textarea {
   background: var(--surface);

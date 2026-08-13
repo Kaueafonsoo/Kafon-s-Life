@@ -137,6 +137,11 @@
         </div>
       </div>
 
+      <div class="insight-card" id="insight-card" hidden>
+        <svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>
+        <p id="insight-texto"></p>
+      </div>
+
       <div class="payday-card" id="payday-card" hidden>
         <div class="payday-block">
           <span class="payday-value" id="payday-days">—</span>
@@ -319,6 +324,22 @@
         <label for="lanc-valor">Valor (R$)</label>
         <input type="number" id="lanc-valor" step="0.01" min="0" placeholder="0,00" required />
       </div>
+      <div id="lanc-repeticao-section">
+        <div class="form-row">
+          <label for="lanc-repeticao">Repetição</label>
+          <select id="lanc-repeticao">
+            <option value="nenhuma">Não repete</option>
+            <option value="recorrente">Repetir mensalmente</option>
+            <option value="parcelado" id="opt-parcelado">Parcelado</option>
+          </select>
+        </div>
+        <div class="form-row" id="lanc-repeticao-qtd-wrap" hidden>
+          <label for="lanc-repeticao-qtd" id="lanc-repeticao-qtd-label">Por quantos meses</label>
+          <input type="number" id="lanc-repeticao-qtd" min="2" max="36" value="12" />
+          <span class="field-hint" id="lanc-repeticao-hint"></span>
+          <p class="repeticao-fim" id="lanc-repeticao-fim"></p>
+        </div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-lancamento" hidden>Excluir</button>
         <div class="modal-actions-right">
@@ -457,6 +478,25 @@
         </div>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Modal: Confirmação -->
+<div class="modal-overlay" id="modal-confirmar" hidden>
+  <div class="modal modal-confirm">
+    <div class="modal-header">
+      <h3>Confirmar exclusão</h3>
+      <button class="modal-close" data-close-modal="modal-confirmar">&times;</button>
+    </div>
+    <div class="modal-confirm-body">
+      <p id="confirmar-mensagem">Tem certeza?</p>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-confirmar">Cancelar</button>
+          <button type="button" class="btn btn-danger-solid" id="btn-confirmar-exclusao">Excluir</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

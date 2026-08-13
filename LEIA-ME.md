@@ -1,8 +1,12 @@
 # GRANA — Finanças
 
-App de controle financeiro pessoal para iPhone e Mac. Funciona offline de verdade (mesmo com o Mac desligado, abre com os últimos dados salvos) e guarda tudo no próprio aparelho — nada é enviado para a internet.
+App de controle financeiro pessoal para iPhone e Mac. Hospedado em `https://kafon-s-life.vercel.app`, com HTTPS de verdade e dados sincronizados na nuvem via Supabase — funciona de qualquer lugar com internet, sem depender do Mac ligado.
 
-Para isso funcionar, o app roda sobre **HTTPS com um certificado próprio** (gerado neste Mac, sem depender de nenhum serviço externo). Isso exige confiar nesse certificado uma única vez no Mac e no iPhone — veja "Instalação (uma vez só)" abaixo. Sem esse passo, o app até abre, mas sem o modo offline: se o Mac estiver fora do ar, a tela fica em branco.
+## Como usar
+
+Abra `https://kafon-s-life.vercel.app` no Safari (iPhone) ou em qualquer navegador (Mac), crie sua conta (e-mail e senha) e comece a lançar. Para instalar como app no iPhone: **Compartilhar → Adicionar à Tela de Início**.
+
+Os dados ficam no Supabase, protegidos por login — cada conta só enxerga os próprios lançamentos (Row Level Security). Toda alteração sincroniza **em tempo real** entre os aparelhos logados na mesma conta: edite no Mac e o iPhone atualiza sozinho, sem precisar recarregar.
 
 ## Comece pelos Ajustes
 
@@ -18,82 +22,29 @@ Lançamentos antigos que usem uma categoria removida continuam intactos: ao edit
 
 O botão de olho no topo troca todos os valores por `•••••`. Serve para abrir o app no ônibus ou mostrar a tela para alguém sem expor quanto você tem. O estado fica salvo, então continua oculto na próxima vez que abrir.
 
-## Instalação (uma vez só)
+## Lançamentos recorrentes e parcelados
 
-### 1. Ligar o servidor no Mac
+Ao criar um lançamento novo, o campo **Repetição** oferece três modos:
 
-Abra o Terminal e rode:
+- **Não repete** — um lançamento único, como sempre.
+- **Repetir mensalmente** — cria o mesmo lançamento nos próximos meses (você escolhe quantos). Útil para aluguel, assinaturas, salário. Cada ocorrência gerada é independente: editar ou excluir uma não afeta as outras.
+- **Parcelado** — só aparece para despesas. Divide o valor digitado em partes iguais, uma por mês, com a descrição marcada "(1/3)", "(2/3)" etc. Se a divisão não fechar exata, o centavo que sobra fica na última parcela.
 
-```bash
-node "/Users/kaueafonso/Documents/CLAUDE KAFON/FINANÇAS PESSOAIS/servidor.js"
-```
+Uma caixinha mostra em qual mês cai a última parcela/recorrência antes de você salvar.
 
-Ele mostra dois endereços para usar no iPhone:
+Editar um lançamento já existente mexe só naquele — a opção de repetição só aparece ao criar um novo.
 
-- **`https://Kaues-MacBook-Air.local:8765`** — use este. É o nome do Mac na rede, não muda quando o Wi-Fi muda de IP.
-- `https://10.10.9.16:8765` — o IP puro, mostrado só como alternativa caso o `.local` não funcione em alguma rede específica (algumas redes de empresa bloqueiam esse tipo de nome).
+## Confirmação antes de excluir
 
-### 2. Confiar no certificado — no Mac
+Excluir um lançamento, meta ou desejo sempre pede confirmação antes. Não tem como apagar sem querer com um toque só.
 
-1. Abra a pasta `certs/` dentro de "FINANÇAS PESSOAIS" no Finder.
-2. Dê **duplo clique em `rootCA.pem`**. Isso abre o app Keychain Access (Acesso às Chaves) e adiciona o certificado — provavelmente na aba "login".
-3. Encontre **"GRANA Financas - CA Local"** na lista, dê duplo clique nele.
-4. Expanda **"Confiar" (Trust)** e mude "Ao usar este certificado" para **"Confiar sempre" (Always Trust)**.
-5. Feche a janela — o Mac vai pedir sua senha para confirmar. Digite e confirme.
+## Insight automático
 
-Isso faz o Safari e o Chrome do Mac pararem de mostrar aviso de conexão insegura ao abrir o app.
+No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma frase como "Você gastou 18% a mais do que em Julho, principalmente em Alimentação" — compara o total de despesas do mês exibido com o mês anterior e aponta a categoria que mais pesou. Some sozinho quando não há mês anterior para comparar, ou quando o modo privacidade está ligado.
 
-### 3. Confiar no certificado — no iPhone
+## As cinco abas
 
-Os nomes de menu abaixo estão em português seguidos do inglês entre colchetes — use o que aparecer no seu aparelho.
-
-1. No Mac, no Finder, clique com o botão direito em `certs/rootCA.pem` → **Compartilhar [Share]** → **AirDrop** → selecione seu iPhone.
-2. No iPhone, toque em **Aceitar [Accept]** quando o AirDrop chegar.
-3. Geralmente aparece sozinho um aviso **"Perfil Baixado" [Profile Downloaded]** — toque nele. Se não aparecer, vá manualmente em **Ajustes → Geral → VPN e Gerenciamento de Dispositivo [Settings → General → VPN & Device Management]**; o perfil vai estar listado lá.
-4. Toque no perfil (**"GRANA Financas - CA Local"**) → **Instalar [Install]**, no canto superior direito.
-5. Digite a senha do iPhone quando pedir.
-6. Aparece um aviso em vermelho sobre certificado raiz não verificado — é esperado, é a sua própria CA. Toque em **Instalar [Install]** de novo para confirmar, depois **Concluído [Done]**.
-7. **Passo que costuma ser esquecido — instalar sozinho não basta:** vá em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificado [Settings → General → About → Certificate Trust Settings]**. Em **"HABILITAR CONFIANÇA TOTAL PARA CERTIFICADOS RAIZ" ["ENABLE FULL TRUST FOR ROOT CERTIFICATES"]**, ative a chave ao lado de **"GRANA Financas - CA Local"** e confirme em **Continuar [Continue]**.
-
-Sem esse último passo (item 7), o certificado fica instalado mas não confiável — o app abre, mas sem o modo offline.
-
-### 4. Adicionar à Tela de Início
-
-O iPhone e o Mac precisam estar na mesma rede Wi-Fi.
-
-1. No Safari do iPhone, abra `https://Kaues-MacBook-Air.local:8765`.
-2. Confirme que não aparece nenhum aviso de "conexão não é privada" — se aparecer, volte ao passo 3 acima.
-3. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Deixe **"Abrir como Web App"** ativado.
-
-Se você já tinha um ícone do GRANA na tela de início de uma versão anterior (com `http://`), apague-o e use este novo.
-
-## Se o app parar de abrir
-
-**O Mac está desligado ou dormindo?** Agora, com o certificado confiado, o app deve abrir mesmo assim — ele carrega a última versão salva no aparelho. Se mesmo assim aparecer tela em branco, volte à etapa 3 acima e confirme o último passo: **Ajustes de Confiança de Certificado** ativado.
-
-**Usando `https://Kaues-MacBook-Air.local:8765`, o IP mudar não é mais problema** — esse nome segue o Mac em qualquer rede doméstica, então normalmente você nunca mais precisa pensar em IP.
-
-**Apareceu "conexão não é privada" mesmo assim?** Ou o `.local` não carrega em alguma rede específica (raro — acontece em algumas redes de empresa/hotel que bloqueiam esse tipo de nome). Nesse caso, descubra o IP atual e use-o direto:
-```bash
-ipconfig getifaddr en0
-```
-Se mesmo o IP der aviso de certificado, rode:
-```bash
-"/Users/kaueafonso/Documents/CLAUDE KAFON/FINANÇAS PESSOAIS/certs/gerar-certificado.sh"
-```
-e reinicie o servidor (`node servidor.js`). Não precisa refazer a confiança do certificado no iPhone — é a mesma CA, só o certificado do servidor é renovado.
-
-## Onde ficam os dados
-
-Os lançamentos, orçamentos e metas ficam salvos no navegador do próprio aparelho. **iPhone e Mac guardam dados separados** — eles não sincronizam sozinhos.
-
-Para passar dados de um para o outro, use **Exportar backup** (gera um arquivo `.json`) e depois **Importar backup** no outro aparelho.
-
-> Faça um backup de vez em quando. Limpar os dados de navegação do Safari/Chrome apaga tudo.
-
-## As quatro abas
-
-**Resumo Mensal** — receitas, despesas e saldo do mês, gráfico de pizza com o percentual gasto por categoria e gráfico de barras comparando os últimos 6 meses.
+**Resumo Mensal** — receitas, despesas e saldo do mês, insight automático, gráfico de pizza com o percentual gasto por categoria e gráfico de barras comparando os últimos 6 meses.
 
 **Lançamentos** — a lista completa, com busca e filtros por categoria e tipo. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. Receitas aparecem em verde, despesas em vermelho.
 
@@ -101,19 +52,26 @@ Para passar dados de um para o outro, use **Exportar backup** (gera um arquivo `
 
 **Metas** — objetivos de economia com valor meta, valor atual, percentual concluído e prazo. Metas com menos de 30 dias restantes ficam destacadas.
 
+**Desejos** — lista de coisas que você quer comprar, com preço estimado, prioridade e link opcional. O topo mostra o total desejado (soma dos itens ainda não comprados).
+
+## Backup local (além da nuvem)
+
+**Exportar dados** baixa um `.json` com tudo. **Importar dados** manda um backup anterior de volta para a conta atual na nuvem (soma ao que já existe, não substitui). Serve como segunda camada de segurança, e também para migrar dados entre contas.
+
 ## Identidade visual
 
-Base cinza minimalista com laranja terroso de assinatura nos botões, aba ativa e barras de meta. Títulos das abas em maiúsculas. Títulos e valores em **Avenir Next**, que já vem instalada no iPhone e no Mac — nada é baixado, então funciona offline.
+Base cinza minimalista com laranja terroso de assinatura nos botões primários, aba ativa e barras de meta. Elementos secundários (selects, botões fantasmas como Ajustes/Exportar/Importar/Sair) usam um terceiro tom, terracota claro. Títulos das abas em maiúsculas. Títulos e valores em **Avenir Next**, que já vem instalada no iPhone e no Mac.
 
-O app fica sempre no modo claro, mesmo que o aparelho esteja no modo escuro — por preferência explícita, não segue mais o tema do sistema.
+O app fica sempre no modo claro, mesmo que o aparelho esteja no modo escuro — por preferência explícita, não segue o tema do sistema.
 
 Todas as cores são variáveis CSS no topo de `css/styles.css`, dentro de `:root`:
 
 - `--primary` — o laranja de assinatura (fundo de botão)
 - `--on-primary` — o texto **sobre** o laranja (branco, para ter contraste)
 - `--primary-text` — o laranja usado **como texto** (percentual das metas, aba ativa), num tom mais fechado para ter contraste
+- `--primary-light` — a terceira cor (fundo dos selects e botões fantasmas)
 
-Se trocar o laranja, ajuste os três juntos e confira o contraste.
+Se trocar o laranja, ajuste esses juntos e confira o contraste.
 
 ## Ícone
 
@@ -124,3 +82,11 @@ Para trocar por uma foto, forneça um **PNG quadrado de 1024×1024** e os três 
 ## Metas
 
 Cada meta tem um emoji escolhido na hora de criar ou editar. Para mudar as opções disponíveis, edite `EMOJIS_META` no topo de `js/app.js`.
+
+## Banco de dados (Supabase)
+
+O schema completo (tabelas, permissões, sincronização em tempo real) está em `supabase/schema.sql`. Sempre que esse arquivo mudar, cole o conteúdo inteiro no **SQL Editor** do Supabase e rode — é seguro rodar quantas vezes precisar, mesmo que parte já exista.
+
+## Rodando localmente (opcional, só para testes)
+
+`servidor.js` e a pasta `certs/` permitem rodar uma cópia do app no seu Mac via `https://localhost:8765`, sem precisar publicar no Vercel a cada mudança. Não é necessário para o uso do dia a dia — a versão publicada já faz tudo. Detalhes de como gerar/renovar o certificado local estão nos comentários de `certs/gerar-certificado.sh`.

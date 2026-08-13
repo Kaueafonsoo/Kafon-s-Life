@@ -235,6 +235,48 @@ function renderPayday() {
   card.hidden = false;
 }
 
+/* ---------- Insight automático ---------- */
+
+/** Compara o total de despesas do mês exibido com o mês anterior e aponta a categoria que mais pesou. */
+function computeInsight(year, month) {
+  const atual = computeTotals(getLancamentosForMonth(year, month));
+  let py = year, pm = month - 1;
+  if (pm < 0) { pm = 11; py -= 1; }
+  const anterior = computeTotals(getLancamentosForMonth(py, pm));
+
+  if (anterior.despesas <= 0) return null; // sem base de comparação
+
+  const variacao = ((atual.despesas - anterior.despesas) / anterior.despesas) * 100;
+  if (Math.abs(variacao) < 1) return null; // variação pequena demais para valer destaque
+
+  const catAtual = computeCategoriaBreakdown(getLancamentosForMonth(year, month));
+  const catAnteriorMap = {};
+  computeCategoriaBreakdown(getLancamentosForMonth(py, pm)).forEach(c => { catAnteriorMap[c.label] = c.value; });
+
+  let maiorAumento = null;
+  catAtual.forEach(c => {
+    const diff = c.value - (catAnteriorMap[c.label] || 0);
+    if (diff > 0 && (!maiorAumento || diff > maiorAumento.diff)) maiorAumento = { categoria: c.label, diff };
+  });
+
+  const sinal = variacao > 0 ? 'a mais' : 'a menos';
+  let texto = `Você gastou <strong>${Math.abs(variacao).toFixed(0)}% ${sinal}</strong> do que em ${MESES[pm]}`;
+  if (maiorAumento && variacao > 0) {
+    texto += `, principalmente em <strong>${escapeHtml(maiorAumento.categoria)}</strong> (+${formatCurrency(maiorAumento.diff)})`;
+  }
+  return texto + '.';
+}
+
+function renderInsight() {
+  const card = document.getElementById('insight-card');
+  if (state.config.privacidade) { card.hidden = true; return; }
+
+  const texto = computeInsight(currentYear, currentMonth);
+  if (!texto) { card.hidden = true; return; }
+  document.getElementById('insight-texto').innerHTML = texto;
+  card.hidden = false;
+}
+
 /* ---------- Navegação por abas ---------- */
 
 const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', orcamento: 'Orçamento', metas: 'Metas', desejos: 'Desejos' };
@@ -291,6 +333,7 @@ function renderResumo() {
   saldoEl.classList.toggle('positive', saldo >= 0);
   saldoEl.classList.toggle('negative', saldo < 0);
 
+  renderInsight();
   renderPayday();
 
   const breakdown = computeCategoriaBreakdown(lancs);
@@ -383,7 +426,7 @@ function renderLancamentos() {
   tbody.querySelectorAll('[data-delete-id]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      deleteLancamento(btn.dataset.deleteId);
+      pedirConfirmacao('Excluir este lançamento?', () => deleteLancamento(btn.dataset.deleteId));
     });
   });
 }
@@ -415,8 +458,15 @@ function initLancamentosTab() {
 
   document.getElementById('form-lancamento').addEventListener('submit', onSubmitLancamento);
   document.getElementById('btn-excluir-lancamento').addEventListener('click', () => {
-    if (editingLancId) { deleteLancamento(editingLancId); closeModal('modal-lancamento'); }
+    if (!editingLancId) return;
+    const id = editingLancId;
+    pedirConfirmacao('Excluir este lançamento?', () => { deleteLancamento(id); closeModal('modal-lancamento'); });
   });
+
+  document.getElementById('lanc-repeticao').addEventListener('change', updateRepeticaoUI);
+  document.getElementById('lanc-tipo').addEventListener('change', updateRepeticaoTipoUI);
+  document.getElementById('lanc-repeticao-qtd').addEventListener('input', updateRepeticaoFim);
+  document.getElementById('lanc-data').addEventListener('change', updateRepeticaoFim);
 }
 
 function openLancamentoModal(id) {
@@ -437,12 +487,18 @@ function openLancamentoModal(id) {
     document.getElementById('lanc-status').value = l.status;
     document.getElementById('lanc-valor').value = l.valor;
     document.getElementById('btn-excluir-lancamento').hidden = false;
+    // Editar um lançamento existente mexe só nele — não recria a série.
+    document.getElementById('lanc-repeticao-section').hidden = true;
   } else {
     document.getElementById('modal-lancamento-title').textContent = 'Novo lançamento';
     document.getElementById('lanc-id').value = '';
     const iso = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(Math.min(new Date().getDate(), 28)).padStart(2, '0')}`;
     document.getElementById('lanc-data').value = iso;
     document.getElementById('btn-excluir-lancamento').hidden = true;
+    document.getElementById('lanc-repeticao-section').hidden = false;
+    document.getElementById('lanc-repeticao').value = 'nenhuma';
+    updateRepeticaoTipoUI();
+    updateRepeticaoUI();
   }
   openModal('modal-lancamento');
 }
@@ -456,29 +512,140 @@ function setSelectValue(selectId, value) {
   sel.value = value;
 }
 
+/** Soma N meses a uma data ISO (aaaa-mm-dd), ajustando o dia se o mês de destino for mais curto. */
+function addMonthsToIso(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  let totalMonths = (m - 1) + n;
+  const targetYear = y + Math.floor(totalMonths / 12);
+  const targetMonth = ((totalMonths % 12) + 12) % 12;
+  const ultimoDia = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const targetDay = Math.min(d, ultimoDia);
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+}
+
+/** Mostra/esconde o campo de quantidade e ajusta o texto conforme "recorrente" ou "parcelado". */
+function updateRepeticaoUI() {
+  const modo = document.getElementById('lanc-repeticao').value;
+  const wrap = document.getElementById('lanc-repeticao-qtd-wrap');
+  const label = document.getElementById('lanc-repeticao-qtd-label');
+  const qtd = document.getElementById('lanc-repeticao-qtd');
+  const hint = document.getElementById('lanc-repeticao-hint');
+
+  if (modo === 'nenhuma') {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  if (modo === 'recorrente') {
+    label.textContent = 'Por quantos meses';
+    qtd.value = 12;
+    hint.textContent = 'Cria o mesmo lançamento nos próximos meses. Cada um pode ser editado ou excluído depois, sem afetar os outros.';
+  } else {
+    label.textContent = 'Em quantas parcelas';
+    qtd.value = 2;
+    hint.textContent = 'O valor digitado é dividido igualmente entre as parcelas, uma por mês.';
+  }
+  updateRepeticaoFim();
+}
+
+/** Mostra em qual mês cai a última parcela/recorrência, a partir da data e da quantidade escolhidas. */
+function updateRepeticaoFim() {
+  const modo = document.getElementById('lanc-repeticao').value;
+  const aviso = document.getElementById('lanc-repeticao-fim');
+  const dataBase = document.getElementById('lanc-data').value;
+  const qtd = parseInt(document.getElementById('lanc-repeticao-qtd').value, 10);
+
+  if (modo === 'nenhuma' || !dataBase || !qtd || qtd < 2) {
+    aviso.hidden = true;
+    return;
+  }
+
+  const dataFim = addMonthsToIso(dataBase, qtd - 1);
+  const [anoFim, mesFim] = dataFim.split('-').map(Number);
+  const mesTexto = `${MESES[mesFim - 1]} de ${anoFim}`;
+
+  aviso.textContent = modo === 'parcelado'
+    ? `Última parcela: ${mesTexto}`
+    : `Repete até: ${mesTexto}`;
+  aviso.hidden = false;
+}
+
+/** "Parcelado" só faz sentido para despesa; esconde a opção quando o tipo é receita. */
+function updateRepeticaoTipoUI() {
+  const tipo = document.getElementById('lanc-tipo').value;
+  const optParcelado = document.getElementById('opt-parcelado');
+  const sel = document.getElementById('lanc-repeticao');
+  optParcelado.hidden = (tipo === 'receita');
+  if (tipo === 'receita' && sel.value === 'parcelado') {
+    sel.value = 'nenhuma';
+    updateRepeticaoUI();
+  }
+}
+
 async function onSubmitLancamento(e) {
   e.preventDefault();
   const id = document.getElementById('lanc-id').value;
   const btn = e.target.querySelector('button[type="submit"]');
-  const payload = {
-    data: document.getElementById('lanc-data').value,
-    descricao: document.getElementById('lanc-descricao').value.trim(),
+
+  const dataBase = document.getElementById('lanc-data').value;
+  const descricaoBase = document.getElementById('lanc-descricao').value.trim();
+  const valorBase = parseFloat(document.getElementById('lanc-valor').value) || 0;
+  const payloadBase = {
     tipo: document.getElementById('lanc-tipo').value,
     categoria: document.getElementById('lanc-categoria').value,
     forma_pagamento: document.getElementById('lanc-forma').value,
     status: document.getElementById('lanc-status').value,
-    valor: parseFloat(document.getElementById('lanc-valor').value) || 0,
   };
+  const modoRepeticao = id ? 'nenhuma' : document.getElementById('lanc-repeticao').value;
+  const qtd = Math.max(1, parseInt(document.getElementById('lanc-repeticao-qtd').value, 10) || 1);
 
   btn.disabled = true;
   try {
     if (id) {
+      const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
       const { data, error } = await supabaseClient.from('lancamentos').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const idx = state.lancamentos.findIndex(x => x.id === id);
       state.lancamentos[idx] = rowToLancamento(data);
       showToast('Lançamento atualizado');
+    } else if (modoRepeticao === 'recorrente' && qtd > 1) {
+      const serieId = crypto.randomUUID();
+      const rows = [];
+      for (let i = 0; i < qtd; i++) {
+        rows.push({
+          ...payloadBase, user_id: session.user.id, serie_id: serieId,
+          data: addMonthsToIso(dataBase, i),
+          descricao: descricaoBase,
+          valor: valorBase,
+        });
+      }
+      const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
+      if (error) throw error;
+      data.forEach(r => state.lancamentos.push(rowToLancamento(r)));
+      showToast(`${qtd} lançamentos recorrentes criados`);
+    } else if (modoRepeticao === 'parcelado' && qtd > 1) {
+      const serieId = crypto.randomUUID();
+      // Divide o valor em partes iguais; a última absorve o resto do arredondamento, para o total fechar exato.
+      const parte = Math.floor((valorBase / qtd) * 100) / 100;
+      const rows = [];
+      let somaParcial = 0;
+      for (let i = 0; i < qtd; i++) {
+        const isUltima = i === qtd - 1;
+        const valorParcela = isUltima ? +(valorBase - somaParcial).toFixed(2) : parte;
+        somaParcial += valorParcela;
+        rows.push({
+          ...payloadBase, user_id: session.user.id, serie_id: serieId,
+          data: addMonthsToIso(dataBase, i),
+          descricao: `${descricaoBase} (${i + 1}/${qtd})`,
+          valor: valorParcela,
+        });
+      }
+      const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
+      if (error) throw error;
+      data.forEach(r => state.lancamentos.push(rowToLancamento(r)));
+      showToast(`Despesa parcelada em ${qtd}x`);
     } else {
+      const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
       const { data, error } = await supabaseClient
         .from('lancamentos')
         .insert({ ...payload, user_id: session.user.id })
@@ -620,7 +787,9 @@ function initMetasTab() {
   document.getElementById('btn-nova-meta-empty').addEventListener('click', () => openMetaModal(null));
   document.getElementById('form-meta').addEventListener('submit', onSubmitMeta);
   document.getElementById('btn-excluir-meta').addEventListener('click', () => {
-    if (editingMetaId) { deleteMeta(editingMetaId); closeModal('modal-meta'); }
+    if (!editingMetaId) return;
+    const id = editingMetaId;
+    pedirConfirmacao('Excluir esta meta?', () => { deleteMeta(id); closeModal('modal-meta'); });
   });
 
   const picker = document.getElementById('emoji-picker');
@@ -765,7 +934,9 @@ function initDesejosTab() {
   document.getElementById('btn-novo-desejo-empty').addEventListener('click', () => openDesejoModal(null));
   document.getElementById('form-desejo').addEventListener('submit', onSubmitDesejo);
   document.getElementById('btn-excluir-desejo').addEventListener('click', () => {
-    if (editingDesejoId) { deleteDesejo(editingDesejoId); closeModal('modal-desejo'); }
+    if (!editingDesejoId) return;
+    const id = editingDesejoId;
+    pedirConfirmacao('Excluir este desejo?', () => { deleteDesejo(id); closeModal('modal-desejo'); });
   });
 }
 
@@ -907,6 +1078,26 @@ async function onSubmitAjustes(e) {
   btn.disabled = false;
 }
 
+/* ---------- Confirmação ---------- */
+
+let confirmarCallback = null;
+
+/** Abre o modal genérico "tem certeza?" e só chama aoConfirmar se o usuário confirmar. */
+function pedirConfirmacao(mensagem, aoConfirmar) {
+  document.getElementById('confirmar-mensagem').textContent = mensagem;
+  confirmarCallback = aoConfirmar;
+  openModal('modal-confirmar');
+}
+
+function initConfirmModal() {
+  document.getElementById('btn-confirmar-exclusao').addEventListener('click', () => {
+    const callback = confirmarCallback;
+    confirmarCallback = null;
+    closeModal('modal-confirmar');
+    if (callback) callback();
+  });
+}
+
 /* ---------- Modais ---------- */
 
 function openModal(id) {
@@ -1038,6 +1229,77 @@ async function importarBackup(data) {
   await fetchAllData();
 }
 
+/* ---------- Sincronização em tempo real ---------- */
+/* Uma alteração feita num aparelho aparece nos outros sem precisar recarregar.
+   Os handlers são seguros mesmo quando o evento é eco da própria escrita deste
+   aparelho: INSERT só adiciona se o id ainda não existe, UPDATE/DELETE mexem
+   só no item daquele id — reaplicar o mesmo dado não duplica nem quebra nada. */
+
+let realtimeChannel = null;
+
+function iniciarRealtime() {
+  if (realtimeChannel) return;
+  const uid = session.user.id;
+  const filtro = `user_id=eq.${uid}`;
+
+  realtimeChannel = supabaseClient
+    .channel('grana-mudancas')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'lancamentos', filter: filtro }, (payload) => {
+      if (payload.eventType === 'DELETE') {
+        state.lancamentos = state.lancamentos.filter(x => x.id !== payload.old.id);
+      } else if (payload.eventType === 'INSERT') {
+        if (!state.lancamentos.some(x => x.id === payload.new.id)) state.lancamentos.push(rowToLancamento(payload.new));
+      } else {
+        const idx = state.lancamentos.findIndex(x => x.id === payload.new.id);
+        if (idx >= 0) state.lancamentos[idx] = rowToLancamento(payload.new);
+      }
+      renderAll();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos', filter: filtro }, (payload) => {
+      if (payload.eventType === 'DELETE') delete state.orcamentos[payload.old.categoria];
+      else state.orcamentos[payload.new.categoria] = Number(payload.new.valor_planejado);
+      renderAll();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'metas', filter: filtro }, (payload) => {
+      if (payload.eventType === 'DELETE') {
+        state.metas = state.metas.filter(x => x.id !== payload.old.id);
+      } else if (payload.eventType === 'INSERT') {
+        if (!state.metas.some(x => x.id === payload.new.id)) state.metas.push(rowToMeta(payload.new));
+      } else {
+        const idx = state.metas.findIndex(x => x.id === payload.new.id);
+        if (idx >= 0) state.metas[idx] = rowToMeta(payload.new);
+      }
+      renderMetas();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'wishlist', filter: filtro }, (payload) => {
+      if (payload.eventType === 'DELETE') {
+        state.desejos = state.desejos.filter(x => x.id !== payload.old.id);
+      } else if (payload.eventType === 'INSERT') {
+        if (!state.desejos.some(x => x.id === payload.new.id)) state.desejos.push(rowToDesejo(payload.new));
+      } else {
+        const idx = state.desejos.findIndex(x => x.id === payload.new.id);
+        if (idx >= 0) state.desejos[idx] = rowToDesejo(payload.new);
+      }
+      renderDesejos();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: filtro }, (payload) => {
+      if (payload.eventType === 'DELETE') return;
+      const cfg = payload.new;
+      state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade };
+      state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
+      state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
+      populateCategoriaSelects();
+      renderAll();
+    })
+    .subscribe();
+}
+
+function pararRealtime() {
+  if (!realtimeChannel) return;
+  supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel = null;
+}
+
 /* ---------- Autenticação ---------- */
 
 function showAuthScreen() {
@@ -1130,6 +1392,7 @@ async function onSessionReady() {
     await fetchAllData();
     populateCategoriaSelects();
     renderAll();
+    iniciarRealtime();
   } catch (err) {
     showToast('Erro ao carregar seus dados: ' + err.message);
   }
@@ -1155,6 +1418,7 @@ function init() {
   initDesejosTab();
   initAjustes();
   initModals();
+  initConfirmModal();
   initExportImport();
   document.getElementById('btn-privacidade').addEventListener('click', togglePrivacidade);
 
@@ -1171,6 +1435,7 @@ function init() {
       onSessionReady();
     } else {
       appStarted = false;
+      pararRealtime();
       showAuthScreen();
     }
   });

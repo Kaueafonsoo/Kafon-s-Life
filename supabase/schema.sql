@@ -20,8 +20,12 @@ create table if not exists lancamentos (
   forma_pagamento text not null,
   valor numeric(12,2) not null check (valor >= 0),
   status text not null check (status in ('pago', 'pendente')),
+  serie_id uuid,
   created_at timestamptz not null default now()
 );
+
+-- Se a tabela já existia de uma versão anterior, adiciona a coluna nova sem apagar nada.
+alter table lancamentos add column if not exists serie_id uuid;
 
 alter table lancamentos enable row level security;
 
@@ -106,3 +110,48 @@ create policy "wishlist: dono pode tudo"
   on wishlist for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+-- ===== sincronização em tempo real =====
+-- Liga o Realtime nas 5 tabelas: uma alteração feita num aparelho aparece nos
+-- outros sem precisar recarregar a página. O bloco "exception" evita erro se
+-- você rodar este script de novo e a tabela já estiver na publicação.
+--
+-- REPLICA IDENTITY FULL é obrigatório para o filtro "user_id=eq..." funcionar
+-- em exclusões: por padrão o Postgres manda só o id da linha apagada, sem
+-- user_id, e o filtro descarta o evento por não achar esse campo. Com FULL,
+-- a linha inteira vai junto no evento de exclusão.
+alter table lancamentos replica identity full;
+alter table orcamentos replica identity full;
+alter table metas replica identity full;
+alter table wishlist replica identity full;
+alter table config replica identity full;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.lancamentos;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.orcamentos;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.metas;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.wishlist;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.config;
+exception when duplicate_object then null;
+end $$;
