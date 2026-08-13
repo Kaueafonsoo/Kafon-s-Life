@@ -1,5 +1,7 @@
 /* ===== Design tokens — grafite minimalista ===== */
+/* Modo claro fixo, por preferência do usuário — não acompanha mais o tema do sistema. */
 :root {
+  color-scheme: light;
   --bg: #E7E5E4;
   --bg-alt: #D6D3D1;
   --surface: #FFFFFF;
@@ -49,48 +51,6 @@
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   /* Avenir Next já vem no iPhone e no Mac — nada é baixado, funciona offline. */
   --font-display: "Avenir Next", "Avenir", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121110;
-    --bg-alt: #1A1817;
-    --surface: #1C1A19;
-    --surface-2: #262322;
-    --border: #37332F;
-    --text: #F5F5F4;
-    --text-muted: #A8A29E;
-    --text-faint: #78716C;
-
-    --primary: #C97A45;
-    --on-primary: #2A1206;
-    --primary-text: #E0A375;
-    --primary-dark: #EFC0A0;
-    --primary-light: #3A2517;
-    --accent: #E0A375;
-
-    --income: #6FBF8B;
-    --income-bg: #1B2A21;
-    --expense: #EF8377;
-    --expense-bg: #33201E;
-    --warning: #D9A94E;
-    --warning-bg: #332A18;
-    --warning-bar: #E0B45C;
-    --danger: #EF8377;
-
-    --chart-1: #A8A29E;
-    --chart-2: #5FA8B8;
-    --chart-3: #7BB894;
-    --chart-4: #C9A05E;
-    --chart-5: #D98A80;
-    --chart-6: #9B8FC7;
-    --chart-7: #7FA3CC;
-    --chart-8: #C98BAC;
-
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
-    --shadow: 0 4px 16px rgba(0,0,0,0.3);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,0.45);
-  }
 }
 
 * { box-sizing: border-box; }
@@ -345,12 +305,6 @@ select { appearance: none; -webkit-appearance: none; padding-right: 30px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2378716C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 8px center; background-size: 16px;
 }
-@media (prefers-color-scheme: dark) {
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A8A29E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  }
-}
-
 .btn {
   border: none;
   border-radius: var(--radius-sm);

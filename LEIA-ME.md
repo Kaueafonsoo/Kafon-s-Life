@@ -105,12 +105,12 @@ Para passar dados de um para o outro, use **Exportar backup** (gera um arquivo `
 
 Base cinza minimalista com laranja terroso de assinatura nos botões, aba ativa e barras de meta. Títulos das abas em maiúsculas. Títulos e valores em **Avenir Next**, que já vem instalada no iPhone e no Mac — nada é baixado, então funciona offline.
 
-O app acompanha o modo claro/escuro do aparelho automaticamente.
+O app fica sempre no modo claro, mesmo que o aparelho esteja no modo escuro — por preferência explícita, não segue mais o tema do sistema.
 
-Todas as cores são variáveis CSS no topo de `css/styles.css` — `:root` para o tema claro, `@media (prefers-color-scheme: dark)` para o escuro:
+Todas as cores são variáveis CSS no topo de `css/styles.css`, dentro de `:root`:
 
 - `--primary` — o laranja de assinatura (fundo de botão)
-- `--on-primary` — o texto **sobre** o laranja (branco no tema claro, escuro no tema escuro, porque lá o laranja é mais claro)
+- `--on-primary` — o texto **sobre** o laranja (branco, para ter contraste)
 - `--primary-text` — o laranja usado **como texto** (percentual das metas, aba ativa), num tom mais fechado para ter contraste
 
 Se trocar o laranja, ajuste os três juntos e confira o contraste.
