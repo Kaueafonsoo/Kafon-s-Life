@@ -1,6 +1,6 @@
 -- GRANA — Finanças
 -- Rode isto inteiro no SQL Editor do Supabase (Project → SQL Editor → New query → Run).
--- Cria as 4 tabelas e trava cada uma para que um usuário só veja e altere as
+-- Cria as 5 tabelas e trava cada uma para que um usuário só veja e altere as
 -- próprias linhas (Row Level Security por auth.uid()). Sem isso, qualquer
 -- pessoa com a chave pública do projeto conseguiria ler os dados de todo mundo.
 --
@@ -84,5 +84,25 @@ alter table config enable row level security;
 drop policy if exists "config: dono pode tudo" on config;
 create policy "config: dono pode tudo"
   on config for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- ===== lista de desejos =====
+create table if not exists wishlist (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  nome text not null,
+  preco numeric(12,2) not null default 0 check (preco >= 0),
+  prioridade text not null default 'media' check (prioridade in ('alta', 'media', 'baixa')),
+  link text,
+  comprado boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table wishlist enable row level security;
+
+drop policy if exists "wishlist: dono pode tudo" on wishlist;
+create policy "wishlist: dono pode tudo"
+  on wishlist for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());

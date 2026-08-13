@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>GRANA — Finanças</title>
-<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento e metas." />
+<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento, metas e lista de desejos." />
 <meta name="theme-color" content="#E7E5E4" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -72,6 +72,10 @@
     <button class="nav-item" data-tab="metas">
       <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
       <span>Metas</span>
+    </button>
+    <button class="nav-item" data-tab="desejos">
+      <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+      <span>Desejos</span>
     </button>
     <div class="sidebar-footer">
       <button class="nav-item nav-item-ghost btn-ajustes">
@@ -220,6 +224,19 @@
       </div>
     </section>
 
+    <!-- DESEJOS -->
+    <section class="tab-panel" id="tab-desejos">
+      <div class="toolbar">
+        <div class="wishlist-total" id="wishlist-total"></div>
+        <button class="btn btn-primary" id="btn-novo-desejo">+ Novo desejo</button>
+      </div>
+      <div class="wishlist-grid" id="wishlist-grid"></div>
+      <div class="empty-state" id="wishlist-empty" hidden>
+        <p>Nenhum item na lista de desejos ainda.</p>
+        <button class="btn btn-primary" id="btn-novo-desejo-empty">+ Novo desejo</button>
+      </div>
+    </section>
+
     <div class="data-actions">
       <button class="btn btn-ghost btn-ajustes">Ajustes</button>
       <button class="btn btn-ghost btn-export">Exportar</button>
@@ -247,6 +264,10 @@
     <button class="tabbar-item" data-tab="metas">
       <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
       <span>Metas</span>
+    </button>
+    <button class="tabbar-item" data-tab="desejos">
+      <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+      <span>Desejos</span>
     </button>
   </nav>
 
@@ -346,6 +367,54 @@
         <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-meta" hidden>Excluir</button>
         <div class="modal-actions-right">
           <button type="button" class="btn btn-ghost" data-close-modal="modal-meta">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Desejo -->
+<div class="modal-overlay" id="modal-desejo" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-desejo-title">Novo desejo</h3>
+      <button class="modal-close" data-close-modal="modal-desejo">&times;</button>
+    </div>
+    <form id="form-desejo">
+      <input type="hidden" id="desejo-id" />
+      <div class="form-row">
+        <label for="desejo-nome">O que você quer comprar</label>
+        <input type="text" id="desejo-nome" placeholder="Ex: Fone de ouvido" required />
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="desejo-preco">Preço estimado (R$)</label>
+          <input type="number" id="desejo-preco" step="0.01" min="0" placeholder="0,00" required />
+        </div>
+        <div>
+          <label for="desejo-prioridade">Prioridade</label>
+          <select id="desejo-prioridade" required>
+            <option value="alta">Alta</option>
+            <option value="media" selected>Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="desejo-link">Link (opcional)</label>
+        <input type="url" id="desejo-link" placeholder="https://..." />
+      </div>
+      <div class="form-row form-row-checkbox">
+        <label class="checkbox-label">
+          <input type="checkbox" id="desejo-comprado" />
+          <span>Já comprei este item</span>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-desejo" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-desejo">Cancelar</button>
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </div>

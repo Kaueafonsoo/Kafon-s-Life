@@ -117,6 +117,7 @@ button { font-family: inherit; cursor: pointer; }
 input, select { font-family: inherit; }
 
 /* ===== Layout ===== */
+.app[hidden] { display: none; }
 .app {
   display: flex;
   min-height: 100vh;
@@ -416,6 +417,9 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .badge-pendente { background: var(--warning-bg); color: var(--warning); }
 .badge-receita { background: var(--income-bg); color: var(--income); }
 .badge-despesa { background: var(--expense-bg); color: var(--expense); }
+.badge-alta { background: var(--expense-bg); color: var(--expense); }
+.badge-media { background: var(--warning-bg); color: var(--warning); }
+.badge-baixa { background: var(--surface-2); color: var(--text-muted); }
 .cat-pill { color: var(--text-muted); font-size: 13px; }
 
 .row-delete-btn {
@@ -503,6 +507,44 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .goal-meta-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-faint); }
 .goal-deadline-warn { color: var(--warning); font-weight: 600; }
 .goal-deadline-over { color: var(--danger); font-weight: 600; }
+
+/* ===== Desejos ===== */
+.wishlist-total { font-size: 13.5px; color: var(--text-muted); align-self: center; }
+.wishlist-total strong { color: var(--text); font-weight: 700; }
+
+.wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.wishlist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wishlist-card:hover { box-shadow: var(--shadow); border-color: var(--primary-light); }
+.wishlist-card.is-comprado { opacity: 0.55; }
+.wishlist-header { display: flex; align-items: flex-start; gap: 9px; }
+.wishlist-name { font-weight: 700; font-size: 15.5px; flex: 1; min-width: 0; }
+.wishlist-card.is-comprado .wishlist-name { text-decoration: line-through; }
+.wishlist-price { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+.wishlist-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wishlist-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12.5px; font-weight: 600; color: var(--primary-text);
+}
+.wishlist-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
+.wishlist-link:hover { text-decoration: underline; }
+
+.form-row-checkbox { flex-direction: row; align-items: center; }
+.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); font-weight: 500; cursor: pointer; }
+.checkbox-label input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
 
 /* ===== Tela de login/cadastro ===== */
 .auth-screen {

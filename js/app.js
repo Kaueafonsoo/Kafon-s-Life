@@ -22,7 +22,10 @@ let state = {
   lancamentos: [],
   orcamentos: {},
   metas: [],
+  desejos: [],
 };
+
+const PRIORIDADE_ORDEM = { alta: 0, media: 1, baixa: 2 };
 
 let supabaseClient = null;
 let session = null;
@@ -35,6 +38,7 @@ let currentMonth = currentDate.getMonth(); // 0-11
 let sortState = { field: 'data', dir: 'desc' };
 let editingLancId = null;
 let editingMetaId = null;
+let editingDesejoId = null;
 
 /* ---------- Conversão linha do banco <-> objeto usado na tela ---------- */
 
@@ -52,19 +56,27 @@ function rowToMeta(r) {
   };
 }
 
+function rowToDesejo(r) {
+  return {
+    id: r.id, nome: r.nome, preco: Number(r.preco), prioridade: r.prioridade,
+    link: r.link || '', comprado: !!r.comprado,
+  };
+}
+
 /* ---------- Carregar tudo do Supabase ---------- */
 
 async function fetchAllData() {
   const uid = session.user.id;
 
-  const [lancRes, orcRes, metaRes, cfgRes] = await Promise.all([
+  const [lancRes, orcRes, metaRes, desejoRes, cfgRes] = await Promise.all([
     supabaseClient.from('lancamentos').select('*').order('data', { ascending: false }),
     supabaseClient.from('orcamentos').select('*'),
     supabaseClient.from('metas').select('*').order('created_at', { ascending: true }),
+    supabaseClient.from('wishlist').select('*').order('created_at', { ascending: true }),
     supabaseClient.from('config').select('*').maybeSingle(),
   ]);
 
-  for (const res of [lancRes, orcRes, metaRes, cfgRes]) {
+  for (const res of [lancRes, orcRes, metaRes, desejoRes, cfgRes]) {
     if (res.error) throw res.error;
   }
 
@@ -74,6 +86,7 @@ async function fetchAllData() {
   (orcRes.data || []).forEach(r => { state.orcamentos[r.categoria] = Number(r.valor_planejado); });
 
   state.metas = (metaRes.data || []).map(rowToMeta);
+  state.desejos = (desejoRes.data || []).map(rowToDesejo);
 
   let cfg = cfgRes.data;
   if (!cfg) {
@@ -224,7 +237,7 @@ function renderPayday() {
 
 /* ---------- Navegação por abas ---------- */
 
-const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', orcamento: 'Orçamento', metas: 'Metas' };
+const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', orcamento: 'Orçamento', metas: 'Metas', desejos: 'Desejos' };
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
@@ -234,8 +247,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
 
   document.getElementById('page-title').textContent = TAB_TITLES[tab];
-  // Metas não são por mês; esconde de vez para não deixar espaço vazio no layout.
-  document.getElementById('month-switcher').hidden = (tab === 'metas');
+  // Metas e Desejos não são por mês; esconde de vez para não deixar espaço vazio no layout.
+  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'desejos');
 
   renderAll();
 }
@@ -699,6 +712,132 @@ async function deleteMeta(id) {
   renderMetas();
 }
 
+/* ---------- Render: Desejos ---------- */
+
+function getSortedDesejos() {
+  return [...state.desejos].sort((a, b) => {
+    if (a.comprado !== b.comprado) return a.comprado ? 1 : -1;
+    return PRIORIDADE_ORDEM[a.prioridade] - PRIORIDADE_ORDEM[b.prioridade];
+  });
+}
+
+function renderDesejos() {
+  const grid = document.getElementById('wishlist-grid');
+  grid.innerHTML = '';
+  document.getElementById('wishlist-empty').hidden = state.desejos.length > 0;
+
+  const totalDesejado = state.desejos.filter(d => !d.comprado).reduce((s, d) => s + d.preco, 0);
+  document.getElementById('wishlist-total').innerHTML = state.desejos.length
+    ? `Total desejado: <strong>${formatCurrency(totalDesejado)}</strong>`
+    : '';
+
+  const PRIORIDADE_LABEL = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+
+  getSortedDesejos().forEach(desejo => {
+    const card = document.createElement('div');
+    card.className = 'wishlist-card' + (desejo.comprado ? ' is-comprado' : '');
+    card.dataset.id = desejo.id;
+    card.innerHTML = `
+      <div class="wishlist-header">
+        <span class="wishlist-name">${escapeHtml(desejo.nome)}</span>
+        <span class="badge badge-${desejo.prioridade}">${PRIORIDADE_LABEL[desejo.prioridade]}</span>
+      </div>
+      <div class="wishlist-price">${formatCurrency(desejo.preco)}</div>
+      <div class="wishlist-footer">
+        <span class="badge ${desejo.comprado ? 'badge-pago' : 'badge-pendente'}">${desejo.comprado ? 'Comprado' : 'Na lista'}</span>
+        ${desejo.link ? `
+          <a class="wishlist-link" href="${escapeHtml(desejo.link)}" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+            Ver item
+          </a>` : '<span></span>'}
+      </div>
+    `;
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.wishlist-link')) return;
+      openDesejoModal(desejo.id);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function initDesejosTab() {
+  document.getElementById('btn-novo-desejo').addEventListener('click', () => openDesejoModal(null));
+  document.getElementById('btn-novo-desejo-empty').addEventListener('click', () => openDesejoModal(null));
+  document.getElementById('form-desejo').addEventListener('submit', onSubmitDesejo);
+  document.getElementById('btn-excluir-desejo').addEventListener('click', () => {
+    if (editingDesejoId) { deleteDesejo(editingDesejoId); closeModal('modal-desejo'); }
+  });
+}
+
+function openDesejoModal(id) {
+  editingDesejoId = id;
+  const form = document.getElementById('form-desejo');
+  form.reset();
+
+  if (id) {
+    const d = state.desejos.find(x => x.id === id);
+    document.getElementById('modal-desejo-title').textContent = 'Editar desejo';
+    document.getElementById('desejo-id').value = d.id;
+    document.getElementById('desejo-nome').value = d.nome;
+    document.getElementById('desejo-preco').value = d.preco;
+    document.getElementById('desejo-prioridade').value = d.prioridade;
+    document.getElementById('desejo-link').value = d.link;
+    document.getElementById('desejo-comprado').checked = d.comprado;
+    document.getElementById('btn-excluir-desejo').hidden = false;
+  } else {
+    document.getElementById('modal-desejo-title').textContent = 'Novo desejo';
+    document.getElementById('desejo-id').value = '';
+    document.getElementById('btn-excluir-desejo').hidden = true;
+  }
+  openModal('modal-desejo');
+}
+
+async function onSubmitDesejo(e) {
+  e.preventDefault();
+  const id = document.getElementById('desejo-id').value;
+  const btn = e.target.querySelector('button[type="submit"]');
+  const payload = {
+    nome: document.getElementById('desejo-nome').value.trim(),
+    preco: parseFloat(document.getElementById('desejo-preco').value) || 0,
+    prioridade: document.getElementById('desejo-prioridade').value,
+    link: document.getElementById('desejo-link').value.trim(),
+    comprado: document.getElementById('desejo-comprado').checked,
+  };
+
+  btn.disabled = true;
+  try {
+    if (id) {
+      const { data, error } = await supabaseClient.from('wishlist').update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      const idx = state.desejos.findIndex(x => x.id === id);
+      state.desejos[idx] = rowToDesejo(data);
+      showToast('Desejo atualizado');
+    } else {
+      const { data, error } = await supabaseClient
+        .from('wishlist')
+        .insert({ ...payload, user_id: session.user.id })
+        .select()
+        .single();
+      if (error) throw error;
+      state.desejos.push(rowToDesejo(data));
+      showToast('Desejo adicionado');
+    }
+    closeModal('modal-desejo');
+    renderDesejos();
+  } catch (err) {
+    showToast('Erro ao salvar: ' + err.message);
+  }
+  btn.disabled = false;
+}
+
+async function deleteDesejo(id) {
+  const { error } = await supabaseClient.from('wishlist').delete().eq('id', id);
+  if (error) { showToast('Erro ao excluir: ' + error.message); return; }
+  state.desejos = state.desejos.filter(x => x.id !== id);
+  showToast('Desejo excluído');
+  renderDesejos();
+}
+
 /* ---------- Ajustes ---------- */
 
 function initAjustes() {
@@ -865,6 +1004,15 @@ async function importarBackup(data) {
     if (error) throw error;
   }
 
+  if (Array.isArray(data.desejos) && data.desejos.length) {
+    const rows = data.desejos.map(d => ({
+      user_id: uid, nome: d.nome, preco: d.preco,
+      prioridade: d.prioridade || 'media', link: d.link || '', comprado: !!d.comprado,
+    }));
+    const { error } = await supabaseClient.from('wishlist').insert(rows);
+    if (error) throw error;
+  }
+
   if (data.orcamentos && typeof data.orcamentos === 'object') {
     const rows = Object.entries(data.orcamentos).map(([categoria, valor_planejado]) => ({
       user_id: uid, categoria, valor_planejado,
@@ -915,6 +1063,7 @@ function traduzErroAuth(msg) {
   if (/user already registered/i.test(msg)) return 'Já existe uma conta com esse e-mail — tente entrar.';
   if (/password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/unable to validate email/i.test(msg)) return 'E-mail inválido.';
+  if (/email not confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar — verifique sua caixa de entrada.';
   if (/failed to fetch/i.test(msg)) return 'Sem conexão com o servidor. Verifique sua internet.';
   return msg;
 }
@@ -968,6 +1117,7 @@ function renderAll() {
   renderLancamentos();
   renderOrcamento();
   renderMetas();
+  renderDesejos();
 }
 
 /* ---------- Init ---------- */
@@ -1002,6 +1152,7 @@ function init() {
   initMonthSwitcher();
   initLancamentosTab();
   initMetasTab();
+  initDesejosTab();
   initAjustes();
   initModals();
   initExportImport();
