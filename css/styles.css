@@ -131,7 +131,8 @@ input, select { font-family: inherit; }
 .nav-item:hover { background: var(--surface-2); color: var(--text); }
 .nav-item.is-active { background: var(--primary-light); color: var(--primary-dark); }
 .sidebar-footer { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
-.nav-item-ghost { font-size: 13px; }
+.nav-item-ghost { font-size: 13px; background: var(--primary-light); color: var(--primary-text); margin-bottom: 6px; }
+.nav-item-ghost:hover { background: var(--primary-dark); color: var(--on-primary); }
 
 .content {
   flex: 1;
@@ -301,8 +302,12 @@ input[type="search"], input[type="text"], input[type="date"], input[type="number
   outline: none;
 }
 input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-select { appearance: none; -webkit-appearance: none; padding-right: 30px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2378716C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+/* Terceira cor do app: fundo dos selects e botões fantasmas, mesma família do laranja mas suave. */
+select {
+  appearance: none; -webkit-appearance: none; padding-right: 30px;
+  background-color: var(--primary-light);
+  border-color: var(--primary-light);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A4A24' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 8px center; background-size: 16px;
 }
 .btn {
@@ -315,8 +320,8 @@ select { appearance: none; -webkit-appearance: none; padding-right: 30px;
 }
 .btn-primary { background: var(--primary); color: var(--on-primary); }
 .btn-primary:hover { background: var(--primary-dark); }
-.btn-ghost { background: transparent; color: var(--text-muted); }
-.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn-ghost { background: var(--primary-light); color: var(--primary-text); }
+.btn-ghost:hover { background: var(--primary-dark); color: var(--on-primary); }
 .btn-danger { color: var(--danger); }
 
 /* ===== Table ===== */
