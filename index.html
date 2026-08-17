@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>GRANA — Finanças</title>
 <meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento, metas e lista de desejos." />
-<meta name="theme-color" content="#E7E5E4" />
+<meta name="theme-color" content="#FDFDFC" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="GRANA" />
@@ -16,35 +16,60 @@
 </head>
 <body>
 
+<!-- Trava rápida com Face ID/Touch ID — some por cima de tudo quando ativada nos Ajustes -->
+<div class="lock-screen" id="lock-screen" hidden>
+  <div class="lock-card">
+    <span class="brand-mark"><img src="icons/icon-192.png" alt="" /></span>
+    <p class="lock-title">GRANA travado</p>
+    <p class="lock-sub">Confirme sua identidade pra continuar.</p>
+    <button type="button" class="btn btn-primary lock-btn" id="btn-lock-unlock">Desbloquear com Face ID</button>
+    <button type="button" class="btn btn-ghost lock-btn" id="btn-lock-signout">Sair e entrar com e-mail</button>
+  </div>
+</div>
+
 <!-- Tela de login/cadastro -->
 <div class="auth-screen" id="auth-screen">
-  <div class="auth-card">
-    <div class="brand auth-brand">
+  <div class="auth-hero">
+    <div class="auth-hero-top">
       <span class="brand-mark"><img src="icons/icon-192.png" alt="" /></span>
-      <span class="brand-name">GRANA</span>
+      <span class="auth-hero-brand">GRANA</span>
     </div>
-
-    <p class="auth-message" id="auth-config-warning" hidden></p>
-
-    <div class="auth-tabs">
-      <button type="button" class="auth-tab is-active" id="auth-toggle-entrar">Entrar</button>
-      <button type="button" class="auth-tab" id="auth-toggle-cadastro">Criar conta</button>
+    <div>
+      <h1 class="auth-hero-title">Cada <span class="hl">GASTO</span> anotado é um passo à <span class="hl">FRENTE</span>.</h1>
+      <p class="auth-hero-sub">Lançamentos, orçamento e metas em um só lugar.</p>
     </div>
+    <p class="auth-hero-foot">Feito pra quem quer começar hoje, não semana que vem.</p>
+  </div>
 
-    <h2 class="auth-title" id="auth-title">Entrar</h2>
+  <div class="auth-form-side">
+    <div class="auth-card">
+      <div class="brand auth-brand-mobile">
+        <span class="brand-mark"><img src="icons/icon-192.png" alt="" /></span>
+        <span class="brand-name">GRANA</span>
+      </div>
 
-    <form id="form-auth">
-      <div class="form-row">
-        <label for="auth-email">E-mail</label>
-        <input type="email" id="auth-email" autocomplete="email" required />
+      <p class="auth-message" id="auth-config-warning" hidden></p>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab is-active" id="auth-toggle-entrar">Entrar</button>
+        <button type="button" class="auth-tab" id="auth-toggle-cadastro">Criar conta</button>
       </div>
-      <div class="form-row">
-        <label for="auth-password">Senha</label>
-        <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required />
-      </div>
-      <p class="auth-message" id="auth-message" hidden></p>
-      <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Entrar</button>
-    </form>
+
+      <h2 class="auth-title" id="auth-title">Entrar</h2>
+
+      <form id="form-auth">
+        <div class="form-row">
+          <label for="auth-email">E-mail</label>
+          <input type="email" id="auth-email" autocomplete="email" required />
+        </div>
+        <div class="form-row">
+          <label for="auth-password">Senha</label>
+          <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required />
+        </div>
+        <p class="auth-message" id="auth-message" hidden></p>
+        <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Entrar</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -59,35 +84,32 @@
     <button class="nav-item is-active" data-tab="resumo">
       <svg viewBox="0 0 24 24"><path d="M4 19h16M7 15v-6M12 15V6M17 15v-3"/></svg>
       <span>Resumo Mensal</span>
+      <span class="nav-dot"></span>
     </button>
     <button class="nav-item" data-tab="lancamentos">
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <span>Lançamentos</span>
+      <span class="nav-dot"></span>
     </button>
     <button class="nav-item" data-tab="orcamento">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
       <span>Orçamento</span>
+      <span class="nav-dot"></span>
     </button>
     <button class="nav-item" data-tab="metas">
       <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
       <span>Metas</span>
+      <span class="nav-dot"></span>
     </button>
     <button class="nav-item" data-tab="desejos">
       <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
       <span>Desejos</span>
+      <span class="nav-dot"></span>
     </button>
     <div class="sidebar-footer">
       <button class="nav-item nav-item-ghost btn-ajustes">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 3.68 1.65 1.65 0 009 2.17V2a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 8v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span>Ajustes</span>
-      </button>
-      <button class="nav-item nav-item-ghost btn-export">
-        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-        <span>Exportar dados</span>
-      </button>
-      <button class="nav-item nav-item-ghost btn-import">
-        <svg viewBox="0 0 24 24"><path d="M12 21V9m0 0l-4 4m4-4l4 4M4 3h16"/></svg>
-        <span>Importar dados</span>
       </button>
       <button class="nav-item nav-item-ghost btn-sair">
         <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -117,8 +139,30 @@
             <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
+        <button class="icon-btn" id="btn-exportar-pdf" aria-label="Exportar relatório em PDF" title="Exportar relatório em PDF">
+          <svg viewBox="0 0 24 24"><path d="M6 9V3h9l3 3v3M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2M6 14h12v7H6z"/></svg>
+        </button>
       </div>
     </header>
+
+    <!-- Skeleton exibido enquanto os dados carregam do Supabase pela primeira vez -->
+    <div class="skeleton" id="skeleton" hidden>
+      <div class="skeleton-row skeleton-row-3">
+        <div class="skeleton-block skeleton-card"></div>
+        <div class="skeleton-block skeleton-card"></div>
+        <div class="skeleton-block skeleton-card"></div>
+      </div>
+      <div class="skeleton-row skeleton-row-2">
+        <div class="skeleton-block skeleton-panel"></div>
+        <div class="skeleton-block skeleton-panel"></div>
+      </div>
+    </div>
+
+    <!-- Mostrado no lugar do skeleton se o primeiro carregamento falhar (sem internet, Supabase fora do ar etc.) -->
+    <div class="load-error" id="load-error" hidden>
+      <p id="load-error-text">Não deu pra carregar seus dados agora.</p>
+      <button type="button" class="btn btn-primary" id="btn-retry-load">Tentar novamente</button>
+    </div>
 
     <!-- RESUMO MENSAL -->
     <section class="tab-panel is-active" id="tab-resumo">
@@ -160,13 +204,23 @@
           <div class="chart-wrap" id="chart-pie"></div>
           <div class="legend" id="legend-pie"></div>
         </div>
-        <div class="panel">
-          <h2>Comparativo mês a mês</h2>
-          <div class="chart-wrap" id="chart-bar"></div>
-          <div class="legend legend-inline">
-            <span class="legend-dot dot-income"></span> Receitas
-            <span class="legend-dot dot-expense"></span> Despesas
+        <div class="panel panel-relative">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2>Evolução patrimonial</h2>
+              <button type="button" class="help-btn" id="btn-evolucao-help" aria-label="O que é este gráfico?">?</button>
+            </div>
+            <div class="range-toggle" id="evolucao-range">
+              <button type="button" data-meses="6">6 meses</button>
+              <button type="button" class="is-active" data-meses="12">12 meses</button>
+            </div>
           </div>
+          <div class="help-popover" id="evolucao-help-popover" hidden>
+            <button type="button" class="help-popover-close" data-close-help aria-label="Fechar">&times;</button>
+            <p><strong>O que é isso?</strong> É a soma de tudo que entrou menos tudo que saiu, mês a mês, desde o seu primeiro lançamento — não é o gasto de um mês, é o quanto sobrou (ou faltou) no total ao longo do tempo.</p>
+            <p>Serve pra ver se seu saldo está crescendo ou encolhendo com o tempo. Os botões 6/12 meses só controlam quanto desse histórico aparece no gráfico.</p>
+          </div>
+          <div class="chart-wrap" id="chart-bar"></div>
         </div>
       </div>
     </section>
@@ -243,12 +297,8 @@
 
     <div class="data-actions">
       <button class="btn btn-ghost btn-ajustes">Ajustes</button>
-      <button class="btn btn-ghost btn-export">Exportar</button>
-      <button class="btn btn-ghost btn-import">Importar</button>
       <button class="btn btn-ghost btn-sair">Sair</button>
     </div>
-
-    <input type="file" id="import-file" accept="application/json" hidden />
   </main>
 
   <!-- Mobile bottom tab bar -->
@@ -275,7 +325,14 @@
     </button>
   </nav>
 
+  <button class="fab" id="fab-novo-lancamento" aria-label="Novo lançamento">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
 </div>
+
+<!-- Relatório imprimível — só aparece no diálogo de impressão/PDF, fica oculto na tela -->
+<div id="print-report" class="print-report"></div>
 
 <!-- Modal: Lançamento -->
 <div class="modal-overlay" id="modal-lancamento" hidden>
@@ -451,6 +508,13 @@
     </div>
     <form id="form-ajustes">
       <div class="form-row">
+        <label>Aparência</label>
+        <div class="range-toggle" id="tema-toggle">
+          <button type="button" data-tema="claro" class="is-active">Claro</button>
+          <button type="button" data-tema="escuro">Escuro</button>
+        </div>
+      </div>
+      <div class="form-row">
         <label for="cfg-nome">Seu nome</label>
         <input type="text" id="cfg-nome" placeholder="Ex: Kauê" />
         <span class="field-hint">Usado na saudação do topo.</span>
@@ -469,6 +533,11 @@
         <label for="cfg-formas">Suas formas de pagamento</label>
         <textarea id="cfg-formas" rows="5" spellcheck="false"></textarea>
         <span class="field-hint">Uma por linha. Use os nomes reais dos seus bancos e cartões.</span>
+      </div>
+      <div class="form-row" id="faceid-row" hidden>
+        <label>Trava rápida</label>
+        <button type="button" class="btn btn-ghost" id="btn-faceid-toggle">Ativar Face ID</button>
+        <span class="field-hint">Pede verificação biométrica toda vez que o app abre neste aparelho. Fica salvo só localmente — não sincroniza entre aparelhos.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>

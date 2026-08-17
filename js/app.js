@@ -16,7 +16,7 @@ const VALOR_OCULTO = 'R$ •••••';
 /* ---------- Estado ---------- */
 
 let state = {
-  config: { nome: '', diaPagamento: null, privacidade: false },
+  config: { nome: '', diaPagamento: null, privacidade: false, tema: 'claro' },
   categorias: [...CATEGORIAS_PADRAO],
   formasPagamento: [...FORMAS_PADRAO],
   lancamentos: [],
@@ -36,9 +36,11 @@ let currentDate = new Date();
 let currentYear = currentDate.getFullYear();
 let currentMonth = currentDate.getMonth(); // 0-11
 let sortState = { field: 'data', dir: 'desc' };
+let evolucaoMeses = 12;
 let editingLancId = null;
 let editingMetaId = null;
 let editingDesejoId = null;
+const statAnimStart = new WeakMap(); // guarda o último valor exibido de cada elemento, pra animar a partir dali
 
 /* ---------- Conversão linha do banco <-> objeto usado na tela ---------- */
 
@@ -100,7 +102,7 @@ async function fetchAllData() {
     cfg = novaCfg;
   }
 
-  state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade };
+  state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade, tema: cfg.tema || 'claro' };
   state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
   state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
 }
@@ -111,6 +113,43 @@ async function fetchAllData() {
 function formatCurrency(value) {
   if (state.config.privacidade) return VALOR_OCULTO;
   return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+/** Versão curta pra rótulos de eixo (R$ 5,2 mil em vez de R$ 5.200,00). */
+function formatCompactCurrency(value) {
+  if (state.config.privacidade) return '•••';
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(value || 0);
+}
+
+/** Anima um valor em R$ subindo/descendo do último número exibido até o novo, em vez de trocar de uma vez. */
+function animateStatValue(el, targetValue) {
+  if (state.config.privacidade) {
+    el.textContent = VALOR_OCULTO;
+    statAnimStart.set(el, targetValue);
+    return;
+  }
+  const startValue = statAnimStart.get(el) ?? 0;
+  statAnimStart.set(el, targetValue);
+  if (startValue === targetValue) {
+    el.textContent = formatCurrency(targetValue);
+    return;
+  }
+  const duration = 500;
+  const startTime = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = startValue + (targetValue - startValue) * eased;
+    el.textContent = current.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (progress < 1) requestAnimationFrame(tick);
+    else el.textContent = formatCurrency(targetValue);
+  }
+  requestAnimationFrame(tick);
+}
+
+/** Vibração leve pra confirmar uma ação no iPhone — silencioso em navegadores sem suporte. */
+function haptic(duration = 12) {
+  if (navigator.vibrate) navigator.vibrate(duration);
 }
 
 function formatDateDisplay(iso) {
@@ -149,16 +188,24 @@ function computeCategoriaBreakdown(lancs) {
     .sort((a, b) => b.value - a.value);
 }
 
-function computeMonthlyComparison(refYear, refMonth, count = 6) {
-  const out = [];
-  for (let i = count - 1; i >= 0; i--) {
-    let m = refMonth - i, y = refYear;
-    while (m < 0) { m += 12; y -= 1; }
-    const lancs = getLancamentosForMonth(y, m);
-    const t = computeTotals(lancs);
-    out.push({ label: `${MESES_ABREV[m]}/${String(y).slice(2)}`, receita: t.receitas, despesa: t.despesas });
+/** Saldo acumulado mês a mês (evolução patrimonial), desde o lançamento mais antigo até o mês de referência,
+    recortado para os últimos `count` meses — assim o acumulado do início do recorte já reflete o histórico todo. */
+function computeNetWorthEvolution(refYear, refMonth, count) {
+  let cursorY = refYear, cursorM = refMonth;
+  if (state.lancamentos.length) {
+    const [y0, m0] = state.lancamentos.reduce((min, l) => l.data < min ? l.data : min, state.lancamentos[0].data).split('-');
+    cursorY = parseInt(y0, 10);
+    cursorM = parseInt(m0, 10) - 1;
   }
-  return out;
+  let acumulado = 0;
+  const porMes = [];
+  while (cursorY < refYear || (cursorY === refYear && cursorM <= refMonth)) {
+    acumulado += computeTotals(getLancamentosForMonth(cursorY, cursorM)).saldo;
+    porMes.push({ label: `${MESES_ABREV[cursorM]}/${String(cursorY).slice(2)}`, saldo: acumulado });
+    cursorM++;
+    if (cursorM > 11) { cursorM = 0; cursorY++; }
+  }
+  return porMes.slice(-count);
 }
 
 /* ---------- Saudação ---------- */
@@ -200,6 +247,38 @@ async function togglePrivacidade() {
     .update({ privacidade: state.config.privacidade })
     .eq('user_id', session.user.id);
   if (error) showToast('Não consegui salvar essa preferência agora');
+}
+
+/* ---------- Modo claro / escuro ---------- */
+
+const TEMA_LOCAL_KEY = 'grana_tema';
+
+/** Só aplica o tema na tela — não mexe em estado nem salva nada. */
+function aplicarTema(tema) {
+  document.documentElement.dataset.theme = tema === 'escuro' ? 'dark' : 'light';
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', tema === 'escuro' ? '#0F0D0B' : '#FDFDFC');
+  document.querySelectorAll('#tema-toggle button').forEach(b => b.classList.toggle('is-active', b.dataset.tema === tema));
+}
+
+async function alternarTema(tema) {
+  if (tema === state.config.tema) return;
+  state.config.tema = tema;
+  aplicarTema(tema);
+  // Guarda localmente pra próxima abertura já nascer no tema certo, sem esperar
+  // o Supabase responder (evita o flash de um tema errado por uma fração de segundo).
+  localStorage.setItem(TEMA_LOCAL_KEY, tema);
+  const { error } = await supabaseClient
+    .from('config')
+    .update({ tema })
+    .eq('user_id', session.user.id);
+  if (error) showToast('Não consegui salvar essa preferência agora');
+}
+
+function initTemaToggle() {
+  document.getElementById('tema-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tema]');
+    if (btn) alternarTema(btn.dataset.tema);
+  });
 }
 
 /* ---------- Contagem para o salário ---------- */
@@ -320,16 +399,39 @@ function renderMonthLabel() {
   document.getElementById('month-label').textContent = monthLabel(currentYear, currentMonth);
 }
 
+function initEvolucaoToggle() {
+  document.getElementById('evolucao-range').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-meses]');
+    if (!btn) return;
+    evolucaoMeses = parseInt(btn.dataset.meses, 10);
+    document.querySelectorAll('#evolucao-range button').forEach(b => b.classList.toggle('is-active', b === btn));
+    renderResumo();
+  });
+}
+
+function initEvolucaoHelp() {
+  const btn = document.getElementById('btn-evolucao-help');
+  const pop = document.getElementById('evolucao-help-popover');
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pop.hidden = !pop.hidden;
+  });
+  pop.querySelector('[data-close-help]').addEventListener('click', () => { pop.hidden = true; });
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) pop.hidden = true;
+  });
+}
+
 /* ---------- Render: Resumo Mensal ---------- */
 
 function renderResumo() {
   const lancs = getLancamentosForMonth(currentYear, currentMonth);
   const { receitas, despesas, saldo } = computeTotals(lancs);
 
-  document.getElementById('stat-receitas').textContent = formatCurrency(receitas);
-  document.getElementById('stat-despesas').textContent = formatCurrency(despesas);
+  animateStatValue(document.getElementById('stat-receitas'), receitas);
+  animateStatValue(document.getElementById('stat-despesas'), despesas);
   const saldoEl = document.getElementById('stat-saldo');
-  saldoEl.textContent = formatCurrency(saldo);
+  animateStatValue(saldoEl, saldo);
   saldoEl.classList.toggle('positive', saldo >= 0);
   saldoEl.classList.toggle('negative', saldo < 0);
 
@@ -340,8 +442,8 @@ function renderResumo() {
   renderPieChart(document.getElementById('chart-pie'), breakdown);
   renderPieLegend(document.getElementById('legend-pie'), breakdown);
 
-  const comparison = computeMonthlyComparison(currentYear, currentMonth, 6);
-  renderBarChart(document.getElementById('chart-bar'), comparison);
+  const evolucao = computeNetWorthEvolution(currentYear, currentMonth, evolucaoMeses);
+  renderAreaChart(document.getElementById('chart-bar'), evolucao);
 }
 
 /* ---------- Render: Lançamentos ---------- */
@@ -446,6 +548,7 @@ function initLancamentosTab() {
 
   document.getElementById('btn-novo-lancamento').addEventListener('click', () => openLancamentoModal(null));
   document.getElementById('btn-novo-lancamento-empty').addEventListener('click', () => openLancamentoModal(null));
+  document.getElementById('fab-novo-lancamento').addEventListener('click', () => openLancamentoModal(null));
 
   document.querySelectorAll('.lanc-table thead th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
@@ -656,6 +759,7 @@ async function onSubmitLancamento(e) {
       showToast('Lançamento adicionado');
     }
     closeModal('modal-lancamento');
+    haptic();
     renderAll();
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
@@ -866,6 +970,7 @@ async function onSubmitMeta(e) {
       showToast('Meta criada');
     }
     closeModal('modal-meta');
+    haptic();
     renderMetas();
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
@@ -994,6 +1099,7 @@ async function onSubmitDesejo(e) {
       showToast('Desejo adicionado');
     }
     closeModal('modal-desejo');
+    haptic();
     renderDesejos();
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
@@ -1026,6 +1132,7 @@ function openAjustes() {
   document.getElementById('cfg-dia-pagamento').value = state.config.diaPagamento || '';
   document.getElementById('cfg-categorias').value = state.categorias.join('\n');
   document.getElementById('cfg-formas').value = state.formasPagamento.join('\n');
+  atualizarBotaoFaceId();
   openModal('modal-ajustes');
 }
 
@@ -1070,12 +1177,145 @@ async function onSubmitAjustes(e) {
 
     populateCategoriaSelects();
     closeModal('modal-ajustes');
+    haptic();
     renderAll();
     showToast('Ajustes salvos');
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
   }
   btn.disabled = false;
+}
+
+/* ---------- Trava rápida com Face ID/Touch ID ---------- */
+// Trava puramente local: o Supabase já autentica de verdade, isso aqui é só uma
+// segunda camada pra ninguém abrir o app com o celular destravado. Por isso o
+// desafio do WebAuthn é gerado na hora, sem ida ao servidor, e a credencial fica
+// só no localStorage deste aparelho (não sincroniza entre Mac e iPhone).
+const FACEID_CRED_KEY = 'grana_faceid_cred';
+const FACEID_ENABLED_KEY = 'grana_faceid_enabled';
+
+function bufToBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function base64ToBuf(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+function traduzErroFaceId(err) {
+  const nome = err && err.name;
+  if (nome === 'NotAllowedError') return 'Não deu tempo ou foi cancelado — tente de novo e confirme o Face ID/Touch ID quando o aparelho pedir.';
+  if (nome === 'InvalidStateError') return 'Este aparelho já tem um Face ID cadastrado pro GRANA.';
+  if (nome === 'SecurityError') return 'Não deu pra confirmar a identidade deste site com segurança.';
+  if (nome === 'NotSupportedError' || nome === 'ConstraintError') return 'Este aparelho não tem um jeito compatível de confirmar com Face ID/Touch ID.';
+  return 'Não deu pra ativar agora. Tente de novo.';
+}
+
+async function faceIdDisponivel() {
+  if (!window.PublicKeyCredential || !navigator.credentials) return false;
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch {
+    return false;
+  }
+}
+
+function faceIdEstaAtivo() {
+  return localStorage.getItem(FACEID_ENABLED_KEY) === '1' && !!localStorage.getItem(FACEID_CRED_KEY);
+}
+
+async function ativarFaceId() {
+  try {
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'GRANA' },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: (session && session.user.email) || 'grana',
+          displayName: state.config.nome || 'Você',
+        },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000,
+      },
+    });
+    localStorage.setItem(FACEID_CRED_KEY, bufToBase64(cred.rawId));
+    localStorage.setItem(FACEID_ENABLED_KEY, '1');
+    showToast('Face ID ativado neste aparelho');
+  } catch (err) {
+    showToast(traduzErroFaceId(err));
+  }
+  atualizarBotaoFaceId();
+}
+
+function desativarFaceId() {
+  localStorage.removeItem(FACEID_CRED_KEY);
+  localStorage.removeItem(FACEID_ENABLED_KEY);
+  showToast('Face ID desativado');
+  atualizarBotaoFaceId();
+}
+
+async function atualizarBotaoFaceId() {
+  const row = document.getElementById('faceid-row');
+  const disponivel = await faceIdDisponivel();
+  row.hidden = !disponivel;
+  if (!disponivel) return;
+  document.getElementById('btn-faceid-toggle').textContent = faceIdEstaAtivo() ? 'Desativar Face ID' : 'Ativar Face ID';
+}
+
+function initFaceIdSetting() {
+  document.getElementById('btn-faceid-toggle').addEventListener('click', () => {
+    if (faceIdEstaAtivo()) desativarFaceId();
+    else ativarFaceId();
+  });
+}
+
+function showLockScreen() {
+  document.getElementById('lock-screen').hidden = false;
+}
+function hideLockScreen() {
+  document.getElementById('lock-screen').hidden = true;
+}
+
+async function tentarDesbloquear() {
+  const credB64 = localStorage.getItem(FACEID_CRED_KEY);
+  if (!credB64) { hideLockScreen(); return; }
+  try {
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ id: base64ToBuf(credB64), type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000,
+      },
+    });
+    if (assertion) hideLockScreen();
+  } catch {
+    // cancelou ou falhou a verificação — a tela continua travada, com o botão pra tentar de novo
+  }
+}
+
+function initLockScreen() {
+  document.getElementById('btn-lock-unlock').addEventListener('click', tentarDesbloquear);
+  document.getElementById('btn-lock-signout').addEventListener('click', async () => {
+    hideLockScreen();
+    await supabaseClient.auth.signOut();
+  });
+  // Sem isso a trava só valia pra abertura inicial: alguém trocando de app e
+  // voltando pro GRANA em segundo plano encontraria tudo aberto do mesmo jeito.
+  // Não tenta desbloquear sozinho ao voltar — só trava; o toque no botão é que
+  // dispara o Face ID, porque o navegador exige um gesto do usuário pra isso.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && appStarted && faceIdEstaAtivo()) showLockScreen();
+  });
+}
+
+/** Chamado logo depois que os dados carregam pela primeira vez (a trava ao
+    voltar do segundo plano é tratada à parte, em initLockScreen). */
+function checarTravaAoAbrir() {
+  if (!faceIdEstaAtivo()) return;
+  showLockScreen();
+  tentarDesbloquear();
 }
 
 /* ---------- Confirmação ---------- */
@@ -1094,6 +1334,7 @@ function initConfirmModal() {
     const callback = confirmarCallback;
     confirmarCallback = null;
     closeModal('modal-confirmar');
+    haptic();
     if (callback) callback();
   });
 }
@@ -1135,98 +1376,64 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2600);
 }
 
-/* ---------- Exportar / Importar (backup local, além da nuvem) ---------- */
+/* ---------- Relatório em PDF (via diálogo de impressão do navegador) ---------- */
 
-function initExportImport() {
-  document.querySelectorAll('.btn-export').forEach(btn => btn.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `grana-financas-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Backup exportado');
-  }));
-
-  const fileInput = document.getElementById('import-file');
-  document.querySelectorAll('.btn-import').forEach(btn => btn.addEventListener('click', () => fileInput.click()));
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const data = JSON.parse(reader.result);
-        if (!data.lancamentos || !data.metas) throw new Error('formato inválido');
-        showToast('Importando...');
-        await importarBackup(data);
-        populateCategoriaSelects();
-        renderAll();
-        showToast('Dados importados com sucesso');
-      } catch (err) {
-        showToast('Falha ao importar: ' + err.message);
-      }
-      fileInput.value = '';
-    };
-    reader.readAsText(file);
-  });
+/** Monta uma view imprimível com o mês corrente e abre o diálogo de impressão —
+    de lá o usuário escolhe "Salvar como PDF", sem precisar de biblioteca nenhuma.
+    Ignora o modo privacidade: gerar o relatório é uma ação explícita, não faz
+    sentido devolver um PDF cheio de "•••••" pro usuário que acabou de pedir por ele. */
+function gerarRelatorioPDF() {
+  const privacidadeAntes = state.config.privacidade;
+  state.config.privacidade = false;
+  try {
+    montarEImprimirRelatorio();
+  } finally {
+    state.config.privacidade = privacidadeAntes;
+  }
 }
 
-/** Envia um backup .json (de uma exportação anterior) para a conta atual na nuvem. */
-async function importarBackup(data) {
-  const uid = session.user.id;
+function montarEImprimirRelatorio() {
+  const lancs = getLancamentosForMonth(currentYear, currentMonth).slice().sort((a, b) => a.data.localeCompare(b.data));
+  const { receitas, despesas, saldo } = computeTotals(lancs);
+  const breakdown = computeCategoriaBreakdown(lancs);
+  const totalDespesas = breakdown.reduce((s, b) => s + b.value, 0);
 
-  if (Array.isArray(data.lancamentos) && data.lancamentos.length) {
-    const rows = data.lancamentos.map(l => ({
-      user_id: uid, data: l.data, descricao: l.descricao, categoria: l.categoria,
-      tipo: l.tipo, forma_pagamento: l.formaPagamento, valor: l.valor, status: l.status,
-    }));
-    const { error } = await supabaseClient.from('lancamentos').insert(rows);
-    if (error) throw error;
-  }
+  const linhasCategorias = breakdown.map(b => `
+    <tr><td>${escapeHtml(b.label)}</td><td>${formatCurrency(b.value)}</td><td>${totalDespesas ? ((b.value / totalDespesas) * 100).toFixed(1) : '0.0'}%</td></tr>
+  `).join('');
 
-  if (Array.isArray(data.metas) && data.metas.length) {
-    const rows = data.metas.map(m => ({
-      user_id: uid, emoji: m.emoji || '🎯', nome: m.nome,
-      valor_meta: m.valorMeta, valor_atual: m.valorAtual, data_prevista: m.dataPrevista,
-    }));
-    const { error } = await supabaseClient.from('metas').insert(rows);
-    if (error) throw error;
-  }
+  const linhasLancamentos = lancs.map(l => `
+    <tr>
+      <td>${formatDateDisplay(l.data)}</td>
+      <td>${escapeHtml(l.descricao)}</td>
+      <td>${escapeHtml(l.categoria)}</td>
+      <td>${l.status === 'pago' ? 'Pago' : 'Pendente'}</td>
+      <td class="print-valor ${l.tipo}">${l.tipo === 'receita' ? '+ ' : '− '}${formatCurrency(l.valor)}</td>
+    </tr>
+  `).join('');
 
-  if (Array.isArray(data.desejos) && data.desejos.length) {
-    const rows = data.desejos.map(d => ({
-      user_id: uid, nome: d.nome, preco: d.preco,
-      prioridade: d.prioridade || 'media', link: d.link || '', comprado: !!d.comprado,
-    }));
-    const { error } = await supabaseClient.from('wishlist').insert(rows);
-    if (error) throw error;
-  }
-
-  if (data.orcamentos && typeof data.orcamentos === 'object') {
-    const rows = Object.entries(data.orcamentos).map(([categoria, valor_planejado]) => ({
-      user_id: uid, categoria, valor_planejado,
-    }));
-    if (rows.length) {
-      const { error } = await supabaseClient.from('orcamentos').upsert(rows);
-      if (error) throw error;
-    }
-  }
-
-  const cfgPayload = {};
-  if (Array.isArray(data.categorias) && data.categorias.length) cfgPayload.categorias = data.categorias;
-  if (Array.isArray(data.formasPagamento) && data.formasPagamento.length) cfgPayload.formas_pagamento = data.formasPagamento;
-  if (data.config) {
-    if (data.config.nome) cfgPayload.nome = data.config.nome;
-    if (data.config.diaPagamento) cfgPayload.dia_pagamento = data.config.diaPagamento;
-  }
-  if (Object.keys(cfgPayload).length) {
-    const { error } = await supabaseClient.from('config').update(cfgPayload).eq('user_id', uid);
-    if (error) throw error;
-  }
-
-  await fetchAllData();
+  document.getElementById('print-report').innerHTML = `
+    <header class="print-header">
+      <span class="print-brand">GRANA</span>
+      <h1>${monthLabel(currentYear, currentMonth)}</h1>
+    </header>
+    <section class="print-summary">
+      <div><span>Receitas</span><strong>${formatCurrency(receitas)}</strong></div>
+      <div><span>Despesas</span><strong>${formatCurrency(despesas)}</strong></div>
+      <div><span>Saldo</span><strong>${formatCurrency(saldo)}</strong></div>
+    </section>
+    ${breakdown.length ? `
+    <section>
+      <h2>Gastos por categoria</h2>
+      <table><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>${linhasCategorias}</tbody></table>
+    </section>` : ''}
+    <section>
+      <h2>Lançamentos</h2>
+      <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Status</th><th>Valor</th></tr></thead><tbody>${linhasLancamentos || '<tr><td colspan="5">Nenhum lançamento neste mês.</td></tr>'}</tbody></table>
+    </section>
+    <footer class="print-footer">Gerado em ${new Date().toLocaleDateString('pt-BR')} pelo GRANA</footer>
+  `;
+  window.print();
 }
 
 /* ---------- Sincronização em tempo real ---------- */
@@ -1285,9 +1492,11 @@ function iniciarRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: filtro }, (payload) => {
       if (payload.eventType === 'DELETE') return;
       const cfg = payload.new;
-      state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade };
+      state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade, tema: cfg.tema || 'claro' };
       state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
       state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
+      aplicarTema(state.config.tema);
+      localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
       populateCategoriaSelects();
       renderAll();
     })
@@ -1388,14 +1597,41 @@ async function onSessionReady() {
   hideAuthScreen();
   if (appStarted) return; // token apenas renovado; dados já estão carregados
   appStarted = true;
+  await carregarDadosIniciais();
+}
+
+/** Busca os dados da conta e monta a tela. Separada de onSessionReady pra poder
+    ser chamada de novo pelo botão "Tentar novamente" se a primeira vez falhar. */
+async function carregarDadosIniciais() {
+  document.getElementById('load-error').hidden = true;
+  showSkeleton();
   try {
     await fetchAllData();
+    aplicarTema(state.config.tema);
+    localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
     populateCategoriaSelects();
     renderAll();
     iniciarRealtime();
+    checarTravaAoAbrir();
+    hideSkeleton();
   } catch (err) {
-    showToast('Erro ao carregar seus dados: ' + err.message);
+    document.getElementById('skeleton').hidden = true; // esconde o brilho, mas o conteúdo real continua escondido
+    document.getElementById('load-error-text').textContent = 'Não deu pra carregar seus dados: ' + err.message;
+    document.getElementById('load-error').hidden = false;
   }
+}
+
+function initLoadRetry() {
+  document.getElementById('btn-retry-load').addEventListener('click', carregarDadosIniciais);
+}
+
+function showSkeleton() {
+  document.getElementById('skeleton').hidden = false;
+  document.querySelector('.content').classList.add('is-loading');
+}
+function hideSkeleton() {
+  document.getElementById('skeleton').hidden = true;
+  document.querySelector('.content').classList.remove('is-loading');
 }
 
 /** Mostra um aviso na tela de login se js/supabase-config.js não foi preenchido. */
@@ -1408,19 +1644,30 @@ function showConfigError(msg) {
 }
 
 function init() {
+  // Aplica o último tema conhecido (guardado localmente) antes de qualquer coisa,
+  // pra não piscar em claro e só depois trocar pra escuro quando os dados da
+  // conta chegarem do Supabase — a leitura de verdade acontece em onSessionReady.
+  aplicarTema(localStorage.getItem(TEMA_LOCAL_KEY) || 'claro');
+
   // A interface é conectada ANTES de tentar falar com o Supabase: uma URL/chave
   // inválida em supabase-config.js não pode deixar a tela inteira sem reação.
   initAuthScreen();
   initTabNav();
   initMonthSwitcher();
+  initEvolucaoToggle();
+  initEvolucaoHelp();
   initLancamentosTab();
   initMetasTab();
   initDesejosTab();
   initAjustes();
   initModals();
   initConfirmModal();
-  initExportImport();
+  initFaceIdSetting();
+  initTemaToggle();
+  initLoadRetry();
+  initLockScreen();
   document.getElementById('btn-privacidade').addEventListener('click', togglePrivacidade);
+  document.getElementById('btn-exportar-pdf').addEventListener('click', gerarRelatorioPDF);
 
   try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

@@ -80,8 +80,12 @@ create table if not exists config (
   dia_pagamento int,
   categorias text[] not null default array['Moradia','Alimentação','Transporte','Saúde','Lazer','Educação','Assinaturas','Outros'],
   formas_pagamento text[] not null default array['Dinheiro','Cartão de Débito','Cartão de Crédito','Pix','Transferência','Boleto','Outro'],
-  privacidade boolean not null default false
+  privacidade boolean not null default false,
+  tema text not null default 'claro' check (tema in ('claro', 'escuro'))
 );
+
+-- Se a tabela já existia de uma versão anterior, adiciona a coluna nova sem apagar nada.
+alter table config add column if not exists tema text not null default 'claro' check (tema in ('claro', 'escuro'));
 
 alter table config enable row level security;
 

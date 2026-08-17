@@ -89,50 +89,112 @@ function renderPieLegend(container, data) {
 }
 
 /**
- * Grouped bar chart comparing income vs expense per month.
- * data: [{ label, receita, despesa }]
+ * Area/line chart of accumulated net worth over time, with a value axis on the
+ * left, a zero reference line when the range crosses zero, and the current
+ * total called out above the last point — so the shape alone isn't the only
+ * thing telling the story.
+ * data: [{ label, saldo }]
  */
-function renderBarChart(container, data) {
+function renderAreaChart(container, data) {
   container.innerHTML = '';
   if (!data.length) {
     container.innerHTML = '<div class="chart-empty">Sem dados suficientes.</div>';
     return;
   }
-  const maxVal = Math.max(1, ...data.map(d => Math.max(d.receita, d.despesa)));
-  const width = Math.max(320, data.length * 64);
-  const height = 220;
-  const padBottom = 26, padTop = 10;
-  const plotH = height - padBottom - padTop;
-  const groupW = width / data.length;
-  const barW = Math.min(18, groupW / 4);
+  const padLeft = 50, padRight = 10, padTop = 34, padBottom = 26;
+  const plotW = Math.max(260, data.length * 40);
+  const width = padLeft + padRight + plotW;
+  const height = 240;
+  const plotH = height - padTop - padBottom;
+
+  const values = data.map(d => d.saldo);
+  const maxVal = Math.max(...values, 0);
+  const minVal = Math.min(...values, 0);
+  const range = (maxVal - minVal) || 1;
+  const stepX = data.length > 1 ? plotW / (data.length - 1) : 0;
+  const yFor = (v) => padTop + plotH - ((v - minVal) / range) * plotH;
+
+  const points = data.map((d, i) => ({ x: padLeft + stepX * i, y: yFor(d.saldo), d }));
+
+  const last = data[data.length - 1];
+  const color = last.saldo >= 0 ? 'var(--income)' : 'var(--expense)';
 
   const svg = svgEl('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height, preserveAspectRatio: 'xMidYMax meet' });
 
-  data.forEach((d, i) => {
-    const gx = groupW * i + groupW / 2;
-    const hReceita = (d.receita / maxVal) * plotH;
-    const hDespesa = (d.despesa / maxVal) * plotH;
+  // Eixo de referência: três níveis (topo, meio, base) pra dar noção de escala real, não só a forma da curva.
+  [maxVal, (maxVal + minVal) / 2, minVal].forEach(v => {
+    const y = yFor(v);
+    const gridLine = svgEl('line', { x1: padLeft, y1: y, x2: padLeft + plotW, y2: y, 'stroke-width': 1 });
+    gridLine.style.stroke = 'var(--border)';
+    svg.appendChild(gridLine);
+    const gridLabel = svgEl('text', { x: padLeft - 8, y: y + 3, 'text-anchor': 'end', 'font-size': '9.5' });
+    gridLabel.style.fill = 'var(--text-faint)';
+    gridLabel.textContent = formatCompactCurrency(v);
+    svg.appendChild(gridLabel);
+  });
 
-    const barReceita = svgEl('rect', {
-      x: gx - barW - 3, y: padTop + (plotH - hReceita),
-      width: barW, height: Math.max(hReceita, 0), rx: 3
+  // Linha de zero tracejada, só quando o período passa de negativo pra positivo (senão já é uma das linhas acima).
+  if (minVal < 0 && maxVal > 0) {
+    const zeroY = yFor(0);
+    const zeroLine = svgEl('line', {
+      x1: padLeft, y1: zeroY, x2: padLeft + plotW, y2: zeroY,
+      'stroke-width': 1, 'stroke-dasharray': '3 3'
     });
-    barReceita.style.fill = 'var(--income)';
-    svg.appendChild(barReceita);
+    zeroLine.style.stroke = 'var(--text-faint)';
+    svg.appendChild(zeroLine);
+  }
 
-    const barDespesa = svgEl('rect', {
-      x: gx + 3, y: padTop + (plotH - hDespesa),
-      width: barW, height: Math.max(hDespesa, 0), rx: 3
-    });
-    barDespesa.style.fill = 'var(--expense)';
-    svg.appendChild(barDespesa);
+  const gradId = 'evo-grad-' + Math.random().toString(36).slice(2, 8);
+  const defs = svgEl('defs', {});
+  const grad = svgEl('linearGradient', { id: gradId, x1: '0', y1: '0', x2: '0', y2: '1' });
+  const stop1 = svgEl('stop', { offset: '0%' });
+  stop1.style.stopColor = color; stop1.style.stopOpacity = '0.22';
+  const stop2 = svgEl('stop', { offset: '100%' });
+  stop2.style.stopColor = color; stop2.style.stopOpacity = '0';
+  grad.appendChild(stop1); grad.appendChild(stop2);
+  defs.appendChild(grad);
+  svg.appendChild(defs);
 
+  const lineStr = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const baseY = padTop + plotH;
+  const areaStr = `${points[0].x.toFixed(1)},${baseY} ${lineStr} ${points[points.length - 1].x.toFixed(1)},${baseY}`;
+
+  svg.appendChild(svgEl('polygon', { points: areaStr, fill: `url(#${gradId})` }));
+
+  const line = svgEl('polyline', {
+    points: lineStr, fill: 'none', 'stroke-width': 2.5,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  });
+  line.style.stroke = color;
+  svg.appendChild(line);
+
+  points.forEach((p, i) => {
+    const dot = svgEl('circle', { cx: p.x, cy: p.y, r: i === points.length - 1 ? 4 : 2.5 });
+    dot.style.fill = color;
+    svg.appendChild(dot);
+  });
+
+  // Chama o valor atual acima do último ponto — é o número que resume o gráfico inteiro.
+  const lastPoint = points[points.length - 1];
+  const valueLabel = svgEl('text', {
+    x: Math.min(lastPoint.x, padLeft + plotW), y: Math.max(padTop - 14, lastPoint.y - 14),
+    'text-anchor': 'end', 'font-size': '13', 'font-weight': '700'
+  });
+  valueLabel.style.fill = color;
+  valueLabel.textContent = formatCurrency(last.saldo);
+  svg.appendChild(valueLabel);
+
+  const labelEvery = data.length > 8 ? 2 : 1;
+  points.forEach((p, i) => {
+    const isLast = i === points.length - 1;
+    if (i % labelEvery !== 0 && !isLast) return;
     const label = svgEl('text', {
-      x: gx, y: height - 6, 'text-anchor': 'middle',
+      x: p.x, y: height - 6,
+      'text-anchor': isLast ? 'end' : (i === 0 ? 'start' : 'middle'),
       'font-size': '10.5'
     });
     label.style.fill = 'var(--text-muted)';
-    label.textContent = d.label;
+    label.textContent = p.d.label;
     svg.appendChild(label);
   });
 
