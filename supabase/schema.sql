@@ -115,6 +115,27 @@ create policy "wishlist: dono pode tudo"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- ===== aparelhos com lembretes por notificação =====
+-- Uma linha por aparelho que ativou "Lembretes" nos Ajustes. O servidor (pasta api/)
+-- lê esta tabela com a chave de serviço pra enviar o aviso diário; o usuário só
+-- enxerga e mexe nas próprias inscrições.
+create table if not exists push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table push_subscriptions enable row level security;
+
+drop policy if exists "push_subscriptions: dono pode tudo" on push_subscriptions;
+create policy "push_subscriptions: dono pode tudo"
+  on push_subscriptions for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 -- ===== sincronização em tempo real =====
 -- Liga o Realtime nas 5 tabelas: uma alteração feita num aparelho aparece nos
 -- outros sem precisar recarregar a página. O bloco "exception" evita erro se

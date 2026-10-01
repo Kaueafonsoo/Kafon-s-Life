@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financas-v6';
+const CACHE_NAME = 'financas-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -39,5 +39,31 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+/* Lembretes por notificação (enviados pelo servidor, ver api/lembretes.js). */
+self.addEventListener('push', (event) => {
+  let dados = {};
+  try { dados = event.data ? event.data.json() : {}; } catch (e) { /* payload inválido: mostra o aviso padrão */ }
+  event.waitUntil(
+    self.registration.showNotification(dados.title || 'GRANA', {
+      body: dados.body || '',
+      icon: './icons/icon-192-v2.png',
+      badge: './icons/icon-192-v2.png',
+      tag: 'grana-lembrete',
+      data: { url: dados.url || './' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const destino = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((janelas) => {
+      for (const j of janelas) if ('focus' in j) return j.focus();
+      return self.clients.openWindow(destino);
+    })
   );
 });

@@ -186,6 +186,14 @@
         <p id="insight-texto"></p>
       </div>
 
+      <div class="budget-alert-card" id="budget-alert-card" hidden>
+        <div class="budget-alert-head">
+          <h2>Atenção ao orçamento</h2>
+          <button type="button" class="btn-link" data-tab="orcamento">Ver orçamento</button>
+        </div>
+        <div class="budget-alert-list" id="budget-alert-list"></div>
+      </div>
+
       <div class="payday-card" id="payday-card" hidden>
         <div class="payday-block">
           <span class="payday-value" id="payday-days">—</span>
@@ -201,8 +209,7 @@
       <div class="charts-row">
         <div class="panel">
           <h2>Gastos por categoria</h2>
-          <div class="chart-wrap" id="chart-pie"></div>
-          <div class="legend" id="legend-pie"></div>
+          <div class="cat-ranking" id="cat-ranking"></div>
         </div>
         <div class="panel panel-relative">
           <div class="panel-header">
@@ -222,6 +229,23 @@
           </div>
           <div class="chart-wrap" id="chart-bar"></div>
         </div>
+      </div>
+
+      <div class="panel trend-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Categorias mês a mês</h2>
+            <p class="panel-sub">Para ver se um gasto está subindo ou caindo com o tempo.</p>
+          </div>
+          <div class="range-toggle" id="trend-range">
+            <button type="button" data-meses="3">3 meses</button>
+            <button type="button" class="is-active" data-meses="6">6 meses</button>
+            <button type="button" data-meses="12">12 meses</button>
+          </div>
+        </div>
+        <div class="trend-chips" id="trend-chips"></div>
+        <div class="chart-wrap" id="chart-trend"></div>
+        <div class="trend-readout" id="trend-readout"></div>
       </div>
     </section>
 
@@ -526,18 +550,26 @@
       </div>
       <div class="form-row">
         <label for="cfg-categorias">Suas categorias</label>
-        <textarea id="cfg-categorias" rows="6" spellcheck="false"></textarea>
+        <textarea id="cfg-categorias" rows="8" spellcheck="false"></textarea>
         <span class="field-hint">Uma por linha. Aparecem no menu de lançamentos e no orçamento.</span>
       </div>
       <div class="form-row">
         <label for="cfg-formas">Suas formas de pagamento</label>
-        <textarea id="cfg-formas" rows="5" spellcheck="false"></textarea>
+        <textarea id="cfg-formas" rows="6" spellcheck="false"></textarea>
         <span class="field-hint">Uma por linha. Use os nomes reais dos seus bancos e cartões.</span>
       </div>
       <div class="form-row" id="faceid-row" hidden>
         <label>Trava rápida</label>
         <button type="button" class="btn btn-ghost" id="btn-faceid-toggle">Ativar Face ID</button>
         <span class="field-hint">Pede verificação biométrica toda vez que o app abre neste aparelho. Fica salvo só localmente — não sincroniza entre aparelhos.</span>
+      </div>
+      <div class="form-row" id="lembretes-row" hidden>
+        <label>Lembretes</label>
+        <div class="inline-actions">
+          <button type="button" class="btn btn-ghost" id="btn-lembretes-toggle">Ativar lembretes</button>
+          <button type="button" class="btn btn-ghost" id="btn-lembretes-teste" hidden>Enviar teste</button>
+        </div>
+        <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta vencendo, orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>

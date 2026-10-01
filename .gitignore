@@ -8,3 +8,8 @@ certs/
 # Arquivos de trabalho temporários
 *.tmp
 _*.html
+
+# Dependências e segredos do servidor de lembretes — nunca versionar
+node_modules/
+segredos-vercel.txt
+.env*

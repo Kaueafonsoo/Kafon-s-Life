@@ -395,6 +395,253 @@ function initMonthSwitcher() {
   });
 }
 
+/* ---------- Gastos por categoria: ranking ---------- */
+
+const RANKING_VISIVEIS = 6;
+let rankingExpandido = false;
+
+/** Lista ordenada do que mais pesou: barra proporcional à maior categoria, % do total e variação vs. mês anterior. */
+function renderCategoriaRanking(breakdown) {
+  const box = document.getElementById('cat-ranking');
+  box.innerHTML = '';
+  const total = breakdown.reduce((s, b) => s + b.value, 0);
+  if (!breakdown.length || total <= 0) {
+    box.innerHTML = '<div class="chart-empty">Sem despesas neste mês.</div>';
+    return;
+  }
+
+  let py = currentYear, pm = currentMonth - 1;
+  if (pm < 0) { pm = 11; py -= 1; }
+  const anterior = {};
+  computeCategoriaBreakdown(getLancamentosForMonth(py, pm)).forEach(c => { anterior[c.label] = c.value; });
+  const temBase = Object.keys(anterior).length > 0;
+
+  const maior = breakdown[0].value;
+  const lista = rankingExpandido ? breakdown : breakdown.slice(0, RANKING_VISIVEIS);
+
+  lista.forEach((c, i) => {
+    const pct = (c.value / total) * 100;
+    const cor = corCategoria(c.label);
+
+    let delta = '';
+    if (temBase) {
+      const antes = anterior[c.label];
+      if (!antes) {
+        delta = '<span class="cat-delta is-new">novo</span>';
+      } else {
+        const v = ((c.value - antes) / antes) * 100;
+        if (Math.abs(v) >= 1) {
+          delta = `<span class="cat-delta ${v > 0 ? 'is-up' : 'is-down'}">${v > 0 ? '↑' : '↓'} ${Math.abs(v).toFixed(0)}%</span>`;
+        }
+      }
+    }
+
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'cat-row';
+    row.dataset.categoria = c.label;
+    row.setAttribute('aria-label', `Ver lançamentos de ${c.label}`);
+    row.innerHTML = `
+      <span class="cat-row-top">
+        <span class="cat-name"><span class="legend-dot" style="background:${cor}"></span>${escapeHtml(c.label)}</span>
+        <span class="cat-value">${formatCurrency(c.value)}</span>
+      </span>
+      <span class="cat-bar"><span class="cat-bar-fill" style="width:${(c.value / maior * 100).toFixed(1)}%;background:${cor}"></span></span>
+      <span class="cat-row-bottom"><span>${pct.toFixed(1)}% do total</span>${delta}</span>
+    `;
+    box.appendChild(row);
+  });
+
+  if (breakdown.length > RANKING_VISIVEIS) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'cat-more';
+    more.textContent = rankingExpandido ? 'Mostrar menos' : `Ver todas (${breakdown.length})`;
+    more.dataset.toggleRanking = '1';
+    box.appendChild(more);
+  }
+}
+
+function initCategoriaRanking() {
+  document.getElementById('cat-ranking').addEventListener('click', (e) => {
+    if (e.target.closest('[data-toggle-ranking]')) {
+      rankingExpandido = !rankingExpandido;
+      renderResumo();
+      return;
+    }
+    const row = e.target.closest('.cat-row');
+    if (!row) return;
+    // Leva direto pros lançamentos dessa categoria, só despesas, pra conferir item por item.
+    const sel = document.getElementById('filter-categoria');
+    if (![...sel.options].some(o => o.value === row.dataset.categoria)) return;
+    sel.value = row.dataset.categoria;
+    document.getElementById('filter-tipo').value = 'despesa';
+    document.getElementById('search-lanc').value = '';
+    switchTab('lancamentos');
+  });
+}
+
+/* ---------- Alertas de orçamento ---------- */
+
+const ORCAMENTO_ALERTA_PCT = 80;
+
+function gastoCategoriaNoMes(categoria, year, month) {
+  return getLancamentosForMonth(year, month)
+    .filter(l => l.tipo === 'despesa' && l.categoria === categoria)
+    .reduce((s, l) => s + l.valor, 0);
+}
+
+/** % do orçamento da categoria já usado no mês da data (0 se a categoria não tem orçamento definido). */
+function pctOrcamento(categoria, dataIso) {
+  const planejado = state.orcamentos[categoria] || 0;
+  if (planejado <= 0) return 0;
+  const [y, m] = dataIso.split('-').map(Number);
+  return (gastoCategoriaNoMes(categoria, y, m - 1) / planejado) * 100;
+}
+
+/** Categorias do mês com 80% ou mais do orçamento usado, da mais apertada pra menos. */
+function computeAlertasOrcamento(year, month) {
+  const alertas = [];
+  state.categorias.forEach(cat => {
+    const planejado = state.orcamentos[cat] || 0;
+    if (planejado <= 0) return;
+    const gasto = gastoCategoriaNoMes(cat, year, month);
+    const pct = (gasto / planejado) * 100;
+    if (pct >= ORCAMENTO_ALERTA_PCT) alertas.push({ categoria: cat, planejado, gasto, pct, estourou: pct > 100 });
+  });
+  return alertas.sort((a, b) => b.pct - a.pct);
+}
+
+/** Depois de salvar uma despesa, avisa na hora se ela fez a categoria cruzar 80% ou 100% do orçamento. */
+function avisarOrcamento(categoria, dataIso, pctAntes) {
+  const pctDepois = pctOrcamento(categoria, dataIso);
+  if (pctDepois > 100 && pctAntes <= 100) {
+    showToast(`Atenção: o orçamento de ${categoria} estourou neste mês.`, 5000);
+  } else if (pctDepois >= ORCAMENTO_ALERTA_PCT && pctAntes < ORCAMENTO_ALERTA_PCT) {
+    showToast(`Atenção: ${categoria} chegou a ${Math.floor(pctDepois)}% do orçamento.`, 5000);
+  }
+}
+
+function renderAlertasOrcamento() {
+  const card = document.getElementById('budget-alert-card');
+  const lista = document.getElementById('budget-alert-list');
+  const alertas = computeAlertasOrcamento(currentYear, currentMonth);
+  if (!alertas.length) { card.hidden = true; return; }
+
+  const MAX = 4;
+  lista.innerHTML = alertas.slice(0, MAX).map(a => `
+    <div class="budget-alert-item">
+      <div class="budget-alert-row">
+        <span class="budget-alert-name"><span class="budget-status-dot ${a.estourou ? 'over' : 'warn'}"></span>${escapeHtml(a.categoria)}</span>
+        <span class="budget-alert-note ${a.estourou ? 'is-over' : ''}">${a.estourou
+          ? `Estourou ${formatCurrency(a.gasto - a.planejado)}`
+          : `${Math.floor(a.pct)}% usado`}</span>
+      </div>
+      <div class="budget-bar-wrap"><div class="budget-bar ${a.estourou ? 'over' : 'warn'}" style="width:${Math.min(100, a.pct)}%"></div></div>
+      <div class="budget-alert-values">${formatCurrency(a.gasto)} de ${formatCurrency(a.planejado)}</div>
+    </div>
+  `).join('') + (alertas.length > MAX ? `<p class="budget-alert-more">e mais ${alertas.length - MAX} no Orçamento</p>` : '');
+  card.hidden = false;
+}
+
+/* ---------- Categorias mês a mês ---------- */
+
+let trendMeses = 6;
+let trendSel = null;      // Set de categorias escolhidas; null = as 4 que mais pesaram no período
+let trendMesSel = null;   // índice do mês destacado; null = o último
+
+/** Cor fixa por categoria (posição na lista de categorias), igual no ranking e nas linhas — assim "azul" é sempre a mesma coisa. */
+function corCategoria(cat) {
+  const i = state.categorias.indexOf(cat);
+  return CHART_PALETTE[(i >= 0 ? i : state.categorias.length) % CHART_PALETTE.length];
+}
+
+function computeCategoriaMensal(count) {
+  const meses = [];
+  for (let k = count - 1; k >= 0; k--) {
+    const d = new Date(currentYear, currentMonth - k, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const porCat = {};
+    computeCategoriaBreakdown(getLancamentosForMonth(y, m)).forEach(c => { porCat[c.label] = c.value; });
+    meses.push({ label: `${MESES_ABREV[m]}/${String(y).slice(2)}`, porCat });
+  }
+  const totais = {};
+  meses.forEach(mes => Object.entries(mes.porCat).forEach(([c, v]) => { totais[c] = (totais[c] || 0) + v; }));
+  const ranking = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
+  return { meses, ranking };
+}
+
+function renderCategoriaTrendPanel() {
+  const { meses, ranking } = computeCategoriaMensal(trendMeses);
+  const chips = document.getElementById('trend-chips');
+  const readout = document.getElementById('trend-readout');
+  const chart = document.getElementById('chart-trend');
+
+  if (!ranking.length) {
+    chips.innerHTML = '';
+    readout.innerHTML = '';
+    chart.innerHTML = '<div class="chart-empty">Sem despesas nesse período.</div>';
+    return;
+  }
+
+  const ativas = trendSel ? ranking.filter(c => trendSel.has(c)) : ranking.slice(0, 4);
+  const ativasSet = new Set(ativas);
+
+  chips.innerHTML = ranking.map(c => `
+    <button type="button" class="trend-chip ${ativasSet.has(c) ? 'is-on' : ''}" data-cat="${escapeHtml(c)}" aria-pressed="${ativasSet.has(c)}">
+      <span class="legend-dot" style="background:${corCategoria(c)}"></span>${escapeHtml(c)}
+    </button>
+  `).join('');
+
+  const series = ativas.map(c => ({ label: c, color: corCategoria(c), values: meses.map(m => m.porCat[c] || 0) }));
+  const idx = (trendMesSel != null && trendMesSel < meses.length) ? trendMesSel : meses.length - 1;
+
+  renderCategoriaTrend(chart, {
+    meses: meses.map(m => m.label), series, selecionado: idx,
+    onSelect: (i) => { trendMesSel = i; renderCategoriaTrendPanel(); },
+  });
+
+  readout.innerHTML = `<div class="trend-readout-title">${meses[idx].label}</div>` + (series.length
+    ? series.map(s => {
+        const v = s.values[idx], antes = idx > 0 ? s.values[idx - 1] : 0;
+        let delta = '';
+        if (idx > 0 && antes > 0) {
+          const p = ((v - antes) / antes) * 100;
+          if (Math.abs(p) >= 1) delta = `<span class="cat-delta ${p > 0 ? 'is-up' : 'is-down'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p).toFixed(0)}%</span>`;
+        }
+        return `<div class="trend-readout-row"><span class="cat-name"><span class="legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}</span><span class="trend-readout-val">${formatCurrency(v)}${delta}</span></div>`;
+      }).join('')
+    : '');
+}
+
+function initCategoriaTrend() {
+  // O gráfico é desenhado na largura do painel; ao girar o celular ou redimensionar, redesenha.
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (document.getElementById('tab-resumo').classList.contains('is-active')) renderCategoriaTrendPanel();
+    }, 150);
+  });
+  document.getElementById('trend-range').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-meses]');
+    if (!btn) return;
+    trendMeses = parseInt(btn.dataset.meses, 10);
+    trendMesSel = null;
+    document.querySelectorAll('#trend-range button').forEach(b => b.classList.toggle('is-active', b === btn));
+    renderCategoriaTrendPanel();
+  });
+  document.getElementById('trend-chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.trend-chip');
+    if (!chip) return;
+    const { ranking } = computeCategoriaMensal(trendMeses);
+    if (!trendSel) trendSel = new Set(ranking.slice(0, 4));
+    const cat = chip.dataset.cat;
+    if (trendSel.has(cat)) trendSel.delete(cat); else trendSel.add(cat);
+    renderCategoriaTrendPanel();
+  });
+}
+
 function renderMonthLabel() {
   document.getElementById('month-label').textContent = monthLabel(currentYear, currentMonth);
 }
@@ -439,8 +686,9 @@ function renderResumo() {
   renderPayday();
 
   const breakdown = computeCategoriaBreakdown(lancs);
-  renderPieChart(document.getElementById('chart-pie'), breakdown);
-  renderPieLegend(document.getElementById('legend-pie'), breakdown);
+  renderCategoriaRanking(breakdown);
+  renderAlertasOrcamento();
+  renderCategoriaTrendPanel();
 
   const evolucao = computeNetWorthEvolution(currentYear, currentMonth, evolucaoMeses);
   renderAreaChart(document.getElementById('chart-bar'), evolucao);
@@ -702,6 +950,8 @@ async function onSubmitLancamento(e) {
   const modoRepeticao = id ? 'nenhuma' : document.getElementById('lanc-repeticao').value;
   const qtd = Math.max(1, parseInt(document.getElementById('lanc-repeticao-qtd').value, 10) || 1);
 
+  const pctAntes = payloadBase.tipo === 'despesa' ? pctOrcamento(payloadBase.categoria, dataBase) : 0;
+
   btn.disabled = true;
   try {
     if (id) {
@@ -761,6 +1011,7 @@ async function onSubmitLancamento(e) {
     closeModal('modal-lancamento');
     haptic();
     renderAll();
+    if (payloadBase.tipo === 'despesa') avisarOrcamento(payloadBase.categoria, dataBase, pctAntes);
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
   }
@@ -1133,6 +1384,7 @@ function openAjustes() {
   document.getElementById('cfg-categorias').value = state.categorias.join('\n');
   document.getElementById('cfg-formas').value = state.formasPagamento.join('\n');
   atualizarBotaoFaceId();
+  atualizarLembretesUI();
   openModal('modal-ajustes');
 }
 
@@ -1270,6 +1522,139 @@ function initFaceIdSetting() {
   });
 }
 
+/* ---------- Lembretes por notificação ---------- */
+// O aparelho se inscreve no serviço de push do navegador e guarda a inscrição no Supabase;
+// quem envia o aviso das 21h é o servidor (api/lembretes.js, via Vercel Cron).
+// No iPhone isso só funciona com o app instalado na tela de início (iOS 16.4+).
+
+function ehIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function appInstalado() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+function pushSuportado() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+function urlBase64ParaBytes(b64) {
+  const padding = '='.repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+async function inscricaoAtual() {
+  if (!pushSuportado()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+
+async function atualizarLembretesUI() {
+  const row = document.getElementById('lembretes-row');
+  const btn = document.getElementById('btn-lembretes-toggle');
+  const teste = document.getElementById('btn-lembretes-teste');
+  const hint = document.getElementById('lembretes-hint');
+
+  if (!pushSuportado()) {
+    // iPhone fora do app instalado não expõe push; explica o caminho em vez de esconder a opção.
+    row.hidden = !(ehIOS() && !appInstalado());
+    if (!row.hidden) {
+      btn.disabled = true;
+      teste.hidden = true;
+      hint.textContent = 'No iPhone, os lembretes só funcionam com o GRANA instalado: no Safari, toque em Compartilhar → Adicionar à Tela de Início, e abra o app por lá.';
+    }
+    return;
+  }
+
+  row.hidden = false;
+  const sub = await inscricaoAtual();
+  const ativo = !!sub && Notification.permission === 'granted';
+  btn.disabled = false;
+  btn.textContent = ativo ? 'Desativar lembretes' : 'Ativar lembretes';
+  teste.hidden = !ativo;
+  hint.textContent = Notification.permission === 'denied'
+    ? 'As notificações estão bloqueadas para o GRANA neste aparelho. Libere em Ajustes do aparelho → Notificações.'
+    : 'Um aviso por dia, às 21h, só quando houver algo importante: conta vencendo, orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
+}
+
+async function ativarLembretes() {
+  try {
+    const permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') {
+      showToast('Sem a permissão de notificações não dá pra ativar os lembretes.');
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ParaBytes(VAPID_PUBLIC_KEY),
+    });
+    const j = sub.toJSON();
+    const { error } = await supabaseClient.from('push_subscriptions').upsert(
+      { user_id: session.user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+      { onConflict: 'endpoint' }
+    );
+    if (error) {
+      await sub.unsubscribe().catch(() => {});
+      throw error;
+    }
+    showToast('Lembretes ativados neste aparelho');
+  } catch (err) {
+    showToast('Não deu pra ativar os lembretes: ' + (err.message || 'tente de novo'));
+  }
+  atualizarLembretesUI();
+}
+
+async function desativarLembretes() {
+  try {
+    const sub = await inscricaoAtual();
+    if (sub) {
+      await supabaseClient.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+    }
+    showToast('Lembretes desativados neste aparelho');
+  } catch (err) {
+    showToast('Não deu pra desativar: ' + (err.message || 'tente de novo'));
+  }
+  atualizarLembretesUI();
+}
+
+/** Ao sair da conta, o aparelho deixa de receber os avisos dela (senão o próximo a entrar veria dados de outra pessoa). */
+async function removerInscricaoAoSair() {
+  try {
+    const sub = await inscricaoAtual();
+    if (!sub) return;
+    await supabaseClient.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    await sub.unsubscribe();
+  } catch (e) { /* sair da conta não pode travar por causa disso */ }
+}
+
+async function enviarTesteLembrete() {
+  const btn = document.getElementById('btn-lembretes-teste');
+  btn.disabled = true;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const resp = await fetch('/api/teste-push', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + data.session.access_token },
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(corpo.erro || `erro ${resp.status}`);
+    showToast('Teste enviado — a notificação chega em instantes.');
+  } catch (err) {
+    showToast('Não deu pra enviar o teste: ' + err.message);
+  }
+  btn.disabled = false;
+}
+
+function initLembretes() {
+  document.getElementById('btn-lembretes-toggle').addEventListener('click', async () => {
+    if (await inscricaoAtual()) desativarLembretes();
+    else ativarLembretes();
+  });
+  document.getElementById('btn-lembretes-teste').addEventListener('click', enviarTesteLembrete);
+}
+
 function showLockScreen() {
   document.getElementById('lock-screen').hidden = false;
 }
@@ -1299,6 +1684,7 @@ function initLockScreen() {
   document.getElementById('btn-lock-unlock').addEventListener('click', tentarDesbloquear);
   document.getElementById('btn-lock-signout').addEventListener('click', async () => {
     hideLockScreen();
+    await removerInscricaoAoSair();
     await supabaseClient.auth.signOut();
   });
   // Sem isso a trava só valia pra abertura inicial: alguém trocando de app e
@@ -1368,12 +1754,12 @@ function initModals() {
 /* ---------- Toast ---------- */
 
 let toastTimer = null;
-function showToast(msg) {
+function showToast(msg, ms = 2600) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.classList.add('is-visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2600);
+  toastTimer = setTimeout(() => toast.classList.remove('is-visible'), ms);
 }
 
 /* ---------- Relatório em PDF (via diálogo de impressão do navegador) ---------- */
@@ -1574,6 +1960,7 @@ function initAuthScreen() {
   document.getElementById('auth-toggle-cadastro').addEventListener('click', () => setAuthMode('cadastrar'));
   document.getElementById('form-auth').addEventListener('submit', onSubmitAuth);
   document.querySelectorAll('.btn-sair').forEach(b => b.addEventListener('click', async () => {
+    await removerInscricaoAoSair();
     await supabaseClient.auth.signOut();
   }));
 }
@@ -1656,6 +2043,8 @@ function init() {
   initMonthSwitcher();
   initEvolucaoToggle();
   initEvolucaoHelp();
+  initCategoriaRanking();
+  initCategoriaTrend();
   initLancamentosTab();
   initMetasTab();
   initDesejosTab();
@@ -1663,6 +2052,7 @@ function init() {
   initModals();
   initConfirmModal();
   initFaceIdSetting();
+  initLembretes();
   initTemaToggle();
   initLoadRetry();
   initLockScreen();
