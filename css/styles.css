@@ -879,7 +879,7 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta, #form-desejo { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-desejo, #form-ajustes { padding: 18px 22px 22px; }
 .modal-confirm-body { padding: 18px 22px 22px; }
 .modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
 .form-row[hidden] { display: none; }
