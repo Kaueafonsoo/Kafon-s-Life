@@ -1164,6 +1164,34 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
   .modal { max-width: 460px; }
 }
 
+/* ===== Celular, modo claro: fundo preto com um clarão no topo =====
+   Como quase tudo na tela é cartão branco, o fundo preto faz eles saltarem. Só atrás do cartão de saldo
+   (que é preto) o fundo é claro e vai escurecendo até o preto — assim o cartão preto também se destaca. */
+@media (max-width: 768px) {
+  :root:not([data-theme="dark"]) body {
+    background-color: #0B0B0B;
+    background-image: linear-gradient(180deg, #F3F3F0 0, #F3F3F0 320px, #0B0B0B 660px);
+    background-repeat: no-repeat;
+  }
+  /* Preto sobre preto sumiria: barra de abas, botão + e aviso passam a ser claros. */
+  :root:not([data-theme="dark"]) .tabbar { background: #F4F1EC; box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.8); }
+  :root:not([data-theme="dark"]) .tabbar-item { color: #8A877E; }
+  :root:not([data-theme="dark"]) .tabbar-item.is-active { color: #0B0B0B; background: rgba(11, 11, 11, 0.09); }
+  :root:not([data-theme="dark"]) .fab { background: #F4F1EC; color: #0B0B0B; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55); }
+  :root:not([data-theme="dark"]) .fab:active { background: #E2DFD7; }
+  :root:not([data-theme="dark"]) .toast { background: #F4F1EC; color: #0B0B0B; }
+  /* O que antes ficava solto sobre o fundo claro vira cartão, pra continuar legível e com os botões visíveis. */
+  :root:not([data-theme="dark"]) .toolbar,
+  :root:not([data-theme="dark"]) .section-hint,
+  :root:not([data-theme="dark"]) #goals-empty,
+  :root:not([data-theme="dark"]) #wishlist-empty {
+    background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-sm);
+  }
+  :root:not([data-theme="dark"]) .section-hint { max-width: none; margin-bottom: 14px; }
+  .toolbar > div:empty { display: none; }
+  :root:not([data-theme="dark"]) .data-actions { border-top-color: rgba(255, 255, 255, 0.14); }
+}
+
 /* ===== Relatório em PDF — só existe pro diálogo de impressão do navegador ===== */
 .print-report { display: none; }
 @media print {
