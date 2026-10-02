@@ -459,7 +459,7 @@ function renderCategoriaRanking(breakdown) {
     row.setAttribute('aria-label', `Ver lançamentos de ${c.label}`);
     row.innerHTML = `
       <span class="cat-row-top">
-        <span class="cat-name">${iconeCategoriaHtml(c.label)}${escapeHtml(c.label)}</span>
+        <span class="cat-name">${iconeCategoriaHtml(c.label)}<span class="name-text">${escapeHtml(c.label)}</span></span>
         <span class="cat-value">${formatCurrency(c.value)}</span>
       </span>
       <span class="cat-bar"><span class="cat-bar-fill" style="width:${(c.value / maior * 100).toFixed(1)}%;background:${cor}"></span></span>
@@ -673,13 +673,11 @@ function renderAlertasOrcamento() {
   lista.innerHTML = alertas.slice(0, MAX).map(a => `
     <div class="budget-alert-item">
       <div class="budget-alert-row">
-        <span class="budget-alert-name">${iconeCategoriaHtml(a.categoria)}${escapeHtml(a.categoria)}</span>
-        <span class="budget-alert-note ${a.estourou ? 'is-over' : ''}">${a.estourou
-          ? `Estourou ${formatCurrency(a.gasto - a.planejado)}`
-          : `${Math.floor(a.pct)}% usado`}</span>
+        <span class="budget-alert-name">${iconeCategoriaHtml(a.categoria)}<span class="name-text">${escapeHtml(a.categoria)}</span></span>
+        <span class="budget-alert-note ${a.estourou ? 'is-over' : ''}">${Math.floor(a.pct)}%</span>
       </div>
       <div class="budget-bar-wrap"><div class="budget-bar ${a.estourou ? 'over' : 'warn'}" style="width:${Math.min(100, a.pct)}%"></div></div>
-      <div class="budget-alert-values">${formatCurrency(a.gasto)} de ${formatCurrency(a.planejado)}</div>
+      <div class="budget-alert-values">${formatCurrency(a.gasto)} de ${formatCurrency(a.planejado)}${a.estourou ? ` · <span class="budget-alert-over">estourou ${formatCurrency(a.gasto - a.planejado)}</span>` : ''}</div>
     </div>
   `).join('') + (alertas.length > MAX ? `<p class="budget-alert-more">e mais ${alertas.length - MAX} no Orçamento</p>` : '');
   card.hidden = false;
@@ -757,7 +755,7 @@ function renderCategoriaTrendPanel() {
           const p = ((v - antes) / antes) * 100;
           if (Math.abs(p) >= 1) delta = `<span class="cat-delta ${p > 0 ? 'is-up' : 'is-down'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p).toFixed(0)}%</span>`;
         }
-        return `<div class="trend-readout-row"><span class="cat-name"><span class="legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}</span><span class="trend-readout-val">${formatCurrency(v)}${delta}</span></div>`;
+        return `<div class="trend-readout-row"><span class="cat-name"><span class="legend-dot" style="background:${s.color}"></span><span class="name-text">${escapeHtml(s.label)}</span></span><span class="trend-readout-val">${formatCurrency(v)}${delta}</span></div>`;
       }).join('')
     : '');
 }

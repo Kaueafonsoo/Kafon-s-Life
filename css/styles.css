@@ -507,9 +507,12 @@ input, select { font-family: inherit; }
 .budget-alert-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .budget-alert-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .budget-alert-name { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; min-width: 0; }
-.budget-alert-note { font-size: 12px; font-weight: 700; color: var(--warning); white-space: nowrap; }
+.budget-alert-note { font-size: 13px; font-weight: 700; color: var(--warning); white-space: nowrap; flex-shrink: 0; }
 .budget-alert-note.is-over { color: var(--danger); }
 .budget-alert-values { font-size: 11.5px; color: var(--text-muted); }
+.budget-alert-over { color: var(--danger); font-weight: 600; }
+/* Nome longo corta com reticências em vez de invadir o valor ao lado. */
+.name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .budget-alert-more { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-muted); }
 
 /* Categorias mês a mês */
