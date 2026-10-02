@@ -147,11 +147,7 @@
 
     <!-- Skeleton exibido enquanto os dados carregam do Supabase pela primeira vez -->
     <div class="skeleton" id="skeleton" hidden>
-      <div class="skeleton-row skeleton-row-3">
-        <div class="skeleton-block skeleton-card"></div>
-        <div class="skeleton-block skeleton-card"></div>
-        <div class="skeleton-block skeleton-card"></div>
-      </div>
+      <div class="skeleton-block skeleton-hero"></div>
       <div class="skeleton-row skeleton-row-2">
         <div class="skeleton-block skeleton-panel"></div>
         <div class="skeleton-block skeleton-panel"></div>
@@ -167,17 +163,22 @@
     <!-- RESUMO MENSAL -->
     <section class="tab-panel is-active" id="tab-resumo">
       <div class="cards-row">
-        <div class="stat-card stat-income">
-          <span class="stat-label">Receitas do mês</span>
-          <span class="stat-value" id="stat-receitas">R$ 0,00</span>
-        </div>
-        <div class="stat-card stat-expense">
-          <span class="stat-label">Despesas do mês</span>
-          <span class="stat-value" id="stat-despesas">R$ 0,00</span>
-        </div>
-        <div class="stat-card stat-balance">
-          <span class="stat-label">Saldo</span>
-          <span class="stat-value" id="stat-saldo">R$ 0,00</span>
+        <div class="hero-card">
+          <span class="hero-ring hero-ring-1" aria-hidden="true"></span>
+          <span class="hero-ring hero-ring-2" aria-hidden="true"></span>
+          <div class="hero-spark" id="hero-spark" aria-hidden="true"></div>
+          <span class="hero-label">Saldo do mês</span>
+          <span class="hero-value" id="stat-saldo">R$ 0,00</span>
+          <div class="hero-chips">
+            <span class="hero-chip hero-chip-in">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 7L7 17M7 9v8h8"/></svg>
+              <span class="hero-chip-text"><small>Receitas</small><strong id="stat-receitas">R$ 0,00</strong></span>
+            </span>
+            <span class="hero-chip hero-chip-out">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+              <span class="hero-chip-text"><small>Despesas</small><strong id="stat-despesas">R$ 0,00</strong></span>
+            </span>
+          </div>
         </div>
       </div>
 

@@ -14,7 +14,7 @@ const TYPES = {
 };
 
 const HOST = '0.0.0.0';
-const PORT = 8765;
+const PORT = Number(process.env.PORT) || 8765;
 
 const keyPath = path.join(ROOT, 'certs', 'server.key');
 const certPath = path.join(ROOT, 'certs', 'server.pem');

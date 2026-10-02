@@ -395,6 +395,22 @@ function initMonthSwitcher() {
   });
 }
 
+/** Mini linha da evolução patrimonial (últimos 6 meses) no canto do cartão de saldo. */
+function renderHeroSpark() {
+  const box = document.getElementById('hero-spark');
+  const dados = computeNetWorthEvolution(currentYear, currentMonth, 6).map(d => d.saldo);
+  if (dados.length < 2) { box.innerHTML = ''; return; }
+  const w = 220, h = 64, pad = 6;
+  const min = Math.min(...dados), max = Math.max(...dados), faixa = (max - min) || 1;
+  const pts = dados.map((v, i) => [pad + (i * (w - pad * 2)) / (dados.length - 1), pad + (h - pad * 2) - ((v - min) / faixa) * (h - pad * 2)]);
+  const linha = pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+  const ult = pts[pts.length - 1];
+  box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+    <polyline points="${linha}" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="4" fill="#fff"/></svg>
+    <span>Evolução em ${dados.length} meses</span>`;
+}
+
 /* ---------- Gastos por categoria: ranking ---------- */
 
 const RANKING_VISIVEIS = 6;
@@ -443,7 +459,7 @@ function renderCategoriaRanking(breakdown) {
     row.setAttribute('aria-label', `Ver lançamentos de ${c.label}`);
     row.innerHTML = `
       <span class="cat-row-top">
-        <span class="cat-name"><span class="legend-dot" style="background:${cor}"></span>${escapeHtml(c.label)}</span>
+        <span class="cat-name">${iconeCategoriaHtml(c.label)}${escapeHtml(c.label)}</span>
         <span class="cat-value">${formatCurrency(c.value)}</span>
       </span>
       <span class="cat-bar"><span class="cat-bar-fill" style="width:${(c.value / maior * 100).toFixed(1)}%;background:${cor}"></span></span>
@@ -479,6 +495,57 @@ function initCategoriaRanking() {
     document.getElementById('search-lanc').value = '';
     switchTab('lancamentos');
   });
+}
+
+
+/* ---------- Ícones de categoria ---------- */
+// Traços simples (24x24, só contorno). A escolha é por palavra-chave no nome da categoria,
+// já que as categorias são do usuário; o que não casar com nada recebe a etiqueta genérica.
+const ICONES_CATEGORIA = {
+  casa: '<path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/>',
+  mercado: '<path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><path d="M9 20h.01M17 20h.01"/>',
+  comida: '<path d="M6 3v8M4 3v5a2 2 0 004 0V3M6 11v10M17 3c-2 1.5-3 4-3 7v3h3V3zM17 13v8"/>',
+  carro: '<path d="M5 16v-5l2-5h10l2 5v5M3 16h18M7 19v-3M17 19v-3M7 12h10"/>',
+  saude: '<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.4A4 4 0 0119 10c0 5.6-7 10-7 10z"/>',
+  lazer: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4 0 007 0M9 9.5h.01M15 9.5h.01"/>',
+  estudo: '<path d="M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v6"/>',
+  assinatura: '<path d="M17 2l3 3-3 3M3 11V9a4 4 0 014-4h13M7 22l-3-3 3-3M21 13v2a4 4 0 01-4 4H4"/>',
+  compras: '<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 016 0v2"/>',
+  esporte: '<path d="M8 4h8v5a4 4 0 01-8 0zM8 6H4v1a3 3 0 003 3M16 6h4v1a3 3 0 01-3 3M12 13v4M8 21h8M10 17h4"/>',
+  jogo: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01"/>',
+  conta: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  viagem: '<path d="M2 14l20-9-6 16-4-7z"/>',
+  presente: '<path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/>',
+  carteira: '<path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 13h.01"/>',
+  etiqueta: '<path d="M3 12V4h8l10 10-8 8zM7.5 8.5h.01"/>',
+};
+const ICONE_POR_PALAVRA = [
+  [/moradia|casa|alug|condom|imovel/, 'casa'],
+  [/restaurante|delivery|lanche|comida|ifood|bar\b|padaria/, 'comida'],
+  [/aliment|mercado|supermerc|feira/, 'mercado'],
+  [/transporte|uber|combust|carro|gasolina|onibus|metro|veiculo/, 'carro'],
+  [/saude|farmac|medic|dentist|plano de saude/, 'saude'],
+  [/lazer|diversao|cinema|entreten|festa|balada/, 'lazer'],
+  [/educa|curso|escola|faculdade|livro/, 'estudo'],
+  [/assinat|streaming|netflix|spotify|mensalidade/, 'assinatura'],
+  [/compra|loja|roupa|shopping|vestuario|pessoais/, 'compras'],
+  [/esporte|academia|fitness|treino/, 'esporte'],
+  [/aposta|jogo|bet|cartola|cassino/, 'jogo'],
+  [/luz|energia|agua|internet|telefone|conta|gas\b/, 'conta'],
+  [/viagem|passagem|hotel|ferias/, 'viagem'],
+  [/presente/, 'presente'],
+  [/salario|renda|receita|invest|rendimento/, 'carteira'],
+];
+
+function iconeDaCategoria(nome) {
+  const chave = (nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const achado = ICONE_POR_PALAVRA.find(([re]) => re.test(chave));
+  return ICONES_CATEGORIA[achado ? achado[1] : 'etiqueta'];
+}
+
+/** Bolinha com o ícone da categoria, na cor fixa dela. */
+function iconeCategoriaHtml(nome) {
+  return `<span class="cat-ico" style="--c:${corCategoria(nome)}" aria-hidden="true"><svg viewBox="0 0 24 24">${iconeDaCategoria(nome)}</svg></span>`;
 }
 
 /* ---------- Alertas de orçamento ---------- */
@@ -532,7 +599,7 @@ function renderAlertasOrcamento() {
   lista.innerHTML = alertas.slice(0, MAX).map(a => `
     <div class="budget-alert-item">
       <div class="budget-alert-row">
-        <span class="budget-alert-name"><span class="budget-status-dot ${a.estourou ? 'over' : 'warn'}"></span>${escapeHtml(a.categoria)}</span>
+        <span class="budget-alert-name">${iconeCategoriaHtml(a.categoria)}${escapeHtml(a.categoria)}</span>
         <span class="budget-alert-note ${a.estourou ? 'is-over' : ''}">${a.estourou
           ? `Estourou ${formatCurrency(a.gasto - a.planejado)}`
           : `${Math.floor(a.pct)}% usado`}</span>
@@ -690,6 +757,8 @@ function renderResumo() {
   renderAlertasOrcamento();
   renderCategoriaTrendPanel();
 
+  renderHeroSpark();
+
   const evolucao = computeNetWorthEvolution(currentYear, currentMonth, evolucaoMeses);
   renderAreaChart(document.getElementById('chart-bar'), evolucao);
 }
@@ -753,7 +822,7 @@ function renderLancamentos() {
     tr.dataset.id = l.id;
     tr.innerHTML = `
       <td class="col-date">${formatDateDisplay(l.data)}</td>
-      <td class="col-desc">${escapeHtml(l.descricao)}</td>
+      <td class="col-desc"><span class="desc-wrap">${iconeCategoriaHtml(l.categoria)}<span class="desc-text">${escapeHtml(l.descricao)}</span></span></td>
       <td class="col-cat"><span class="cat-pill">${escapeHtml(l.categoria)}</span></td>
       <td class="col-tipo"><span class="badge badge-${l.tipo}">${l.tipo === 'receita' ? 'Receita' : 'Despesa'}</span></td>
       <td class="col-forma">${escapeHtml(l.formaPagamento)}</td>
@@ -1052,8 +1121,8 @@ function renderOrcamento() {
     item.className = 'budget-item';
     item.innerHTML = `
       <div class="budget-cat">
-        <span class="budget-status-dot ${status}"></span>
-        ${escapeHtml(cat)}
+        ${iconeCategoriaHtml(cat)}
+        <span class="budget-cat-name">${escapeHtml(cat)}</span>
       </div>
       <div class="budget-bar-wrap">
         <div class="budget-bar ${status}" style="width:${Math.min(100, pct)}%"></div>
