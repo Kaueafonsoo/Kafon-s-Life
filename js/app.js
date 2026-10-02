@@ -406,8 +406,8 @@ function renderHeroSpark() {
   const linha = pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
   const ult = pts[pts.length - 1];
   box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
-    <polyline points="${linha}" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="4" fill="#fff"/></svg>
+    <polyline points="${linha}" fill="none" stroke="currentColor" stroke-opacity=".85" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="4" fill="currentColor"/></svg>
     <span>Evolução em ${dados.length} meses</span>`;
 }
 
