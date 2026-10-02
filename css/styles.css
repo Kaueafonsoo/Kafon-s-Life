@@ -1164,14 +1164,16 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
   .modal { max-width: 460px; }
 }
 
-/* ===== Celular, modo claro: fundo preto com um clarão no topo =====
-   Como quase tudo na tela é cartão branco, o fundo preto faz eles saltarem. Só atrás do cartão de saldo
-   (que é preto) o fundo é claro e vai escurecendo até o preto — assim o cartão preto também se destaca. */
+/* ===== Celular, modo claro: fundo em degradê contínuo, preto e claro alternando =====
+   Como quase tudo na tela é cartão branco, as faixas pretas fazem eles saltarem; atrás do cartão de saldo
+   (que é preto) a faixa é clara. O padrão rola junto com a página e se repete até o fim. */
 @media (max-width: 768px) {
   :root:not([data-theme="dark"]) body {
     background-color: #0B0B0B;
-    background-image: linear-gradient(180deg, #F3F3F0 0, #F3F3F0 320px, #0B0B0B 660px);
-    background-repeat: no-repeat;
+    /* Ciclo de 1300px que se repete até o fim da página: claro (atrás do cartão de saldo) → preto → claro → … */
+    background-image: linear-gradient(180deg, #EDECE7 0, #EDECE7 300px, #0B0B0B 700px, #0B0B0B 900px, #EDECE7 1300px);
+    background-size: 100% 1300px;
+    background-repeat: repeat-y;
   }
   /* Preto sobre preto sumiria: barra de abas, botão + e aviso passam a ser claros. */
   :root:not([data-theme="dark"]) .tabbar { background: #F4F1EC; box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.8); }
