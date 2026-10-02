@@ -109,8 +109,9 @@ function renderAreaChart(container, data) {
   const axisValues = [maxVal, (maxVal + minVal) / 2, minVal];
   const widestLabel = Math.max(...axisValues.map(v => formatCompactCurrency(v).length));
   const padLeft = Math.max(50, Math.ceil(widestLabel * 6 + 16)), padRight = 14, padTop = 34, padBottom = 26;
-  const plotW = Math.max(260, data.length * 40);
-  const width = padLeft + padRight + plotW;
+  // Largura real do painel (a faixa agora é larga); sem isso o desenho esticaria e o texto ficaria enorme.
+  const width = Math.max(container.clientWidth || 0, 300);
+  const plotW = width - padLeft - padRight;
   const height = 240;
   const plotH = height - padTop - padBottom;
   const range = (maxVal - minVal) || 1;
@@ -124,7 +125,7 @@ function renderAreaChart(container, data) {
   const last = data[data.length - 1];
   const color = last.saldo >= 0 ? 'var(--income)' : 'var(--expense)';
 
-  const svg = svgEl('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height, preserveAspectRatio: 'xMidYMax meet' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${width} ${height}`, width, height });
 
   // Eixo de referência: três níveis (topo, meio, base) pra dar noção de escala real, não só a forma da curva.
   axisValues.forEach(v => {

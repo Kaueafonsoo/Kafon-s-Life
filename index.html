@@ -212,41 +212,41 @@
           <h2>Gastos por categoria</h2>
           <div class="cat-ranking" id="cat-ranking"></div>
         </div>
-        <div class="panel panel-relative">
+        <div class="panel trend-panel">
           <div class="panel-header">
-            <div class="panel-title-group">
-              <h2>Evolução patrimonial</h2>
-              <button type="button" class="help-btn" id="btn-evolucao-help" aria-label="O que é este gráfico?">?</button>
+            <div>
+              <h2>Categorias mês a mês</h2>
+              <p class="panel-sub">Para ver se um gasto está subindo ou caindo com o tempo.</p>
             </div>
-            <div class="range-toggle" id="evolucao-range">
-              <button type="button" data-meses="6">6 meses</button>
-              <button type="button" class="is-active" data-meses="12">12 meses</button>
+            <div class="range-toggle" id="trend-range">
+              <button type="button" data-meses="3">3 meses</button>
+              <button type="button" class="is-active" data-meses="6">6 meses</button>
+              <button type="button" data-meses="12">12 meses</button>
             </div>
           </div>
-          <div class="help-popover" id="evolucao-help-popover" hidden>
-            <button type="button" class="help-popover-close" data-close-help aria-label="Fechar">&times;</button>
-            <p><strong>O que é isso?</strong> É a soma de tudo que entrou menos tudo que saiu, mês a mês, desde o seu primeiro lançamento — não é o gasto de um mês, é o quanto sobrou (ou faltou) no total ao longo do tempo.</p>
-            <p>Serve pra ver se seu saldo está crescendo ou encolhendo com o tempo. Os botões 6/12 meses só controlam quanto desse histórico aparece no gráfico.</p>
-          </div>
-          <div class="chart-wrap" id="chart-bar"></div>
+          <div class="trend-chips" id="trend-chips"></div>
+          <div class="chart-wrap" id="chart-trend"></div>
+          <div class="trend-readout" id="trend-readout"></div>
         </div>
       </div>
 
-      <div class="panel trend-panel">
+      <div class="panel panel-relative evo-panel">
         <div class="panel-header">
-          <div>
-            <h2>Categorias mês a mês</h2>
-            <p class="panel-sub">Para ver se um gasto está subindo ou caindo com o tempo.</p>
+          <div class="panel-title-group">
+            <h2>Evolução patrimonial</h2>
+            <button type="button" class="help-btn" id="btn-evolucao-help" aria-label="O que é este gráfico?">?</button>
           </div>
-          <div class="range-toggle" id="trend-range">
-            <button type="button" data-meses="3">3 meses</button>
-            <button type="button" class="is-active" data-meses="6">6 meses</button>
-            <button type="button" data-meses="12">12 meses</button>
+          <div class="range-toggle" id="evolucao-range">
+            <button type="button" data-meses="6">6 meses</button>
+            <button type="button" class="is-active" data-meses="12">12 meses</button>
           </div>
         </div>
-        <div class="trend-chips" id="trend-chips"></div>
-        <div class="chart-wrap" id="chart-trend"></div>
-        <div class="trend-readout" id="trend-readout"></div>
+        <div class="help-popover" id="evolucao-help-popover" hidden>
+          <button type="button" class="help-popover-close" data-close-help aria-label="Fechar">&times;</button>
+          <p><strong>O que é isso?</strong> É a soma de tudo que entrou menos tudo que saiu, mês a mês, desde o seu primeiro lançamento — não é o gasto de um mês, é o quanto sobrou (ou faltou) no total ao longo do tempo.</p>
+          <p>Serve pra ver se seu saldo está crescendo ou encolhendo com o tempo. Os botões 6/12 meses só controlam quanto desse histórico aparece no gráfico.</p>
+        </div>
+        <div class="chart-wrap" id="chart-bar"></div>
       </div>
     </section>
 

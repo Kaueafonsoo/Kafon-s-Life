@@ -518,6 +518,29 @@ const ICONES_CATEGORIA = {
   presente: '<path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/>',
   carteira: '<path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 13h.01"/>',
   etiqueta: '<path d="M3 12V4h8l10 10-8 8zM7.5 8.5h.01"/>',
+  tv: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v4.5l4-2.25zM8 21h8"/>',
+  musica: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  cruz: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  celular: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  wifi: '<path d="M2 9a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 19.5h.01"/>',
+  gota: '<path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/>',
+  combustivel: '<path d="M4 21V5a2 2 0 012-2h6a2 2 0 012 2v16M3 21h12M14 9h2a2 2 0 012 2v5a1.5 1.5 0 003 0V8l-3-3M7 8h4"/>',
+  halter: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+  camisa: '<path d="M8 3L3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 01-8 0z"/>',
+  cartao: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
+  troca: '<path d="M7 7h13l-3-3M17 17H4l3 3"/>',
+  recibo: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/>',
+  escudo: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+  filme: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  ingresso: '<path d="M3 9V7a1 1 0 011-1h16a1 1 0 011 1v2a3 3 0 000 6v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2a3 3 0 000-6z"/><path d="M14 6v12"/>',
+  cafe: '<path d="M4 9h13v5a5 5 0 01-5 5H9a5 5 0 01-5-5zM17 10h2a2 2 0 010 4h-2M7 3v2M11 3v2M15 3v2"/>',
+  pata: '<circle cx="6" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="18" cy="10" r="1.8"/><path d="M12 12c-3 0-5 3-5 5.2 0 1.5 1.5 2 3 1.5 1-.3 1.5-.5 2-.5s1 .2 2 .5c1.5.5 3-.1 3-1.5C17 15 15 12 12 12z"/>',
+  tesoura: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1L20 20M8.1 15.9L20 4"/>',
+  livro: '<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19a2 2 0 012-2h13"/>',
+  grafico: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  cama: '<path d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 00-3-3h-7v5M7.5 11.5h.01"/>',
+  game: '<rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 10v5M4.5 12.5h5M15.5 11h.01M18 14h.01"/>',
+  laptop: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20"/>',
 };
 const ICONE_POR_PALAVRA = [
   [/moradia|casa|alug|condom|imovel/, 'casa'],
@@ -543,9 +566,60 @@ function iconeDaCategoria(nome) {
   return ICONES_CATEGORIA[achado ? achado[1] : 'etiqueta'];
 }
 
+
+// A descrição do lançamento ("Netflix", "Uber", "Farmácia") diz mais sobre o que foi do que a categoria,
+// então ela tem prioridade; só quando nada casa é que vale o ícone da categoria.
+const ICONE_POR_DESCRICAO = [
+  [/uber|\b99\b|taxi|cabify|onibus|metro\b|bilhete unico|pedagio|estacion|oficina|mecanic|pneu|ipva|licenciamento/, 'carro'],
+  [/gasolina|combust|posto|etanol|alcool|diesel|abastec/, 'combustivel'],
+  [/ifood|rappi|restaurante|lanche|pizza|burger|hamburg|mcdonald|subway|sushi|churrasc|marmita|almoco|jantar|delivery|padaria|pastel|acai/, 'comida'],
+  [/cafe|starbucks|\bbar\b|cerveja|chopp|boteco|happy hour/, 'cafe'],
+  [/mercado|supermerc|atacad|assai|carrefour|hortifruti|acougue|sacolao|feira|compras do mes/, 'mercado'],
+  [/netflix|disney|hbo|prime video|globoplay|youtube|streaming|paramount|apple tv|crunchyroll/, 'tv'],
+  [/spotify|deezer|apple music|musica/, 'musica'],
+  [/farmacia|drogaria|remedio|medic|consulta|exame|dentista|hospital|clinica|psicolog|terapia|plano de saude|unimed/, 'cruz'],
+  [/academia|smartfit|crossfit|personal|treino|suplemento|whey/, 'halter'],
+  [/aluguel|condominio|iptu|financiamento|reforma|imobili/, 'casa'],
+  [/\bluz\b|energia|enel|cpfl|cemig|eletric/, 'conta'],
+  [/\bagua\b|sabesp|saneamento|copasa/, 'gota'],
+  [/internet|wifi|fibra|banda larga/, 'wifi'],
+  [/celular|telefone|\bvivo\b|\bclaro\b|\btim\b|\boi\b|recarga/, 'celular'],
+  [/cartao|fatura|nubank|\binter\b|\bc6\b|itau|bradesco|santander|anuidade/, 'cartao'],
+  [/\bpix\b|transferencia|\bted\b|\bdoc\b|saque|deposito/, 'troca'],
+  [/boleto|imposto|taxa|darf|multa|tarifa|\biss\b|inss/, 'recibo'],
+  [/seguro|previdencia/, 'escudo'],
+  [/cinema|filme/, 'filme'],
+  [/\bshow\b|ingresso|teatro|festival|evento|balada|festa/, 'ingresso'],
+  [/steam|playstation|\bpsn\b|xbox|nintendo|\bgame\b|riot|valorant|fifa/, 'game'],
+  [/\bbet\b|bet365|aposta|cassino|tigrinho|loteria|mega.?sena|cartola|\bjogo\b/, 'jogo'],
+  [/roupa|camisa|calca|tenis|sapato|sandalia|shein|renner|zara|vestuario|blusa|jaqueta/, 'camisa'],
+  [/notebook|computador|mouse|teclado|monitor|eletron|iphone|samsung|fone|headphone|airpods|tablet|ipad/, 'laptop'],
+  [/cabelo|barbear|barbearia|salao|manicure|estetica|depila|corte/, 'tesoura'],
+  [/\bpet\b|racao|veterin|cachorro|gato|petshop/, 'pata'],
+  [/curso|faculdade|escola|udemy|alura|matricula|apostila|idioma|ingles/, 'estudo'],
+  [/livro|kindle|livraria/, 'livro'],
+  [/hotel|hospedagem|airbnb|pousada/, 'cama'],
+  [/viagem|passagem|\bvoo\b|latam|decolar|booking/, 'viagem'],
+  [/presente|aniversario|natal|cesta/, 'presente'],
+  [/salario|pagamento|renda|freela|comissao|bonus|13o|decimo|reembolso|estorno|cashback|rendimento|dividendo/, 'carteira'],
+  [/invest|tesouro|\bcdb\b|acoes|\bfii\b|poupanca|aporte|cripto|bitcoin|reserva/, 'grafico'],
+  [/doacao|dizimo|igreja|caridade/, 'saude'],
+  [/esporte|futebol|quadra|\bbola\b/, 'esporte'],
+];
+
+function semAcento(texto) {
+  return (texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function iconeDoLancamento(descricao, categoria) {
+  const achado = ICONE_POR_DESCRICAO.find(([re]) => re.test(semAcento(descricao)));
+  return achado ? ICONES_CATEGORIA[achado[1]] : iconeDaCategoria(categoria);
+}
+
 /** Bolinha com o ícone da categoria, na cor fixa dela. */
-function iconeCategoriaHtml(nome) {
-  return `<span class="cat-ico" style="--c:${corCategoria(nome)}" aria-hidden="true"><svg viewBox="0 0 24 24">${iconeDaCategoria(nome)}</svg></span>`;
+function iconeCategoriaHtml(nome, descricao) {
+  const traco = descricao ? iconeDoLancamento(descricao, nome) : iconeDaCategoria(nome);
+  return `<span class="cat-ico" style="--c:${corCategoria(nome)}" aria-hidden="true"><svg viewBox="0 0 24 24">${traco}</svg></span>`;
 }
 
 /* ---------- Alertas de orçamento ---------- */
@@ -616,6 +690,7 @@ function renderAlertasOrcamento() {
 let trendMeses = 6;
 let trendSel = null;      // Set de categorias escolhidas; null = as 4 que mais pesaram no período
 let trendMesSel = null;   // índice do mês destacado; null = o último
+let trendChipsAbertos = false;
 
 /** Cor fixa por categoria (posição na lista de categorias), igual no ranking e nas linhas — assim "azul" é sempre a mesma coisa. */
 function corCategoria(cat) {
@@ -654,11 +729,17 @@ function renderCategoriaTrendPanel() {
   const ativas = trendSel ? ranking.filter(c => trendSel.has(c)) : ranking.slice(0, 4);
   const ativasSet = new Set(ativas);
 
-  chips.innerHTML = ranking.map(c => `
+  // Só as 6 que mais pesaram ficam à vista (mais as que o usuário já ligou); o resto abre em "+N".
+  const VISIVEIS = 6;
+  const visiveis = trendChipsAbertos ? ranking : ranking.filter((c, i) => i < VISIVEIS || ativasSet.has(c));
+  const escondidas = ranking.length - visiveis.length;
+  chips.innerHTML = visiveis.map(c => `
     <button type="button" class="trend-chip ${ativasSet.has(c) ? 'is-on' : ''}" data-cat="${escapeHtml(c)}" aria-pressed="${ativasSet.has(c)}">
       <span class="legend-dot" style="background:${corCategoria(c)}"></span>${escapeHtml(c)}
     </button>
-  `).join('');
+  `).join('') + (escondidas > 0
+    ? `<button type="button" class="trend-chip trend-chip-more" data-toggle-chips>+${escondidas}</button>`
+    : (trendChipsAbertos && ranking.length > VISIVEIS ? '<button type="button" class="trend-chip trend-chip-more" data-toggle-chips>menos</button>' : ''));
 
   const series = ativas.map(c => ({ label: c, color: corCategoria(c), values: meses.map(m => m.porCat[c] || 0) }));
   const idx = (trendMesSel != null && trendMesSel < meses.length) ? trendMesSel : meses.length - 1;
@@ -687,7 +768,10 @@ function initCategoriaTrend() {
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (document.getElementById('tab-resumo').classList.contains('is-active')) renderCategoriaTrendPanel();
+      if (document.getElementById('tab-resumo').classList.contains('is-active')) {
+        renderCategoriaTrendPanel();
+        renderEvolucaoPanel();
+      }
     }, 150);
   });
   document.getElementById('trend-range').addEventListener('click', (e) => {
@@ -701,6 +785,11 @@ function initCategoriaTrend() {
   document.getElementById('trend-chips').addEventListener('click', (e) => {
     const chip = e.target.closest('.trend-chip');
     if (!chip) return;
+    if (chip.hasAttribute('data-toggle-chips')) {
+      trendChipsAbertos = !trendChipsAbertos;
+      renderCategoriaTrendPanel();
+      return;
+    }
     const { ranking } = computeCategoriaMensal(trendMeses);
     if (!trendSel) trendSel = new Set(ranking.slice(0, 4));
     const cat = chip.dataset.cat;
@@ -759,6 +848,10 @@ function renderResumo() {
 
   renderHeroSpark();
 
+  renderEvolucaoPanel();
+}
+
+function renderEvolucaoPanel() {
   const evolucao = computeNetWorthEvolution(currentYear, currentMonth, evolucaoMeses);
   renderAreaChart(document.getElementById('chart-bar'), evolucao);
 }
@@ -822,7 +915,7 @@ function renderLancamentos() {
     tr.dataset.id = l.id;
     tr.innerHTML = `
       <td class="col-date">${formatDateDisplay(l.data)}</td>
-      <td class="col-desc"><span class="desc-wrap">${iconeCategoriaHtml(l.categoria)}<span class="desc-text">${escapeHtml(l.descricao)}</span></span></td>
+      <td class="col-desc"><span class="desc-wrap">${iconeCategoriaHtml(l.categoria, l.descricao)}<span class="desc-text">${escapeHtml(l.descricao)}</span></span></td>
       <td class="col-cat"><span class="cat-pill">${escapeHtml(l.categoria)}</span></td>
       <td class="col-tipo"><span class="badge badge-${l.tipo}">${l.tipo === 'receita' ? 'Receita' : 'Despesa'}</span></td>
       <td class="col-forma">${escapeHtml(l.formaPagamento)}</td>
