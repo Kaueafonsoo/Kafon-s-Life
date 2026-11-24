@@ -386,9 +386,39 @@ function renderInsight() {
 
 /* ---------- Navegação por abas ---------- */
 
-const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', orcamento: 'Orçamento', metas: 'Metas' };
+const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', planejar: 'Planejar' };
 
-function switchTab(tab) {
+/* Planejar tem duas partes: Orçamento e Metas. A última escolhida fica guardada neste aparelho (só conforto). */
+const PLANEJAR_SUB_KEY = 'grana_planejar_aba';
+const PLANEJAR_SUBS = ['orcamento', 'metas'];
+let planejarSub = (() => {
+  try { const v = localStorage.getItem(PLANEJAR_SUB_KEY); if (PLANEJAR_SUBS.includes(v)) return v; } catch (e) { /* sem localStorage: abre no Orçamento */ }
+  return 'orcamento';
+})();
+let abaAtual = 'resumo';
+
+/** Mostra a parte pedida do Planejar e guarda a escolha para a próxima vez. */
+function mostrarPlanejarSub(sub) {
+  if (!PLANEJAR_SUBS.includes(sub)) sub = 'orcamento';
+  planejarSub = sub;
+  try { localStorage.setItem(PLANEJAR_SUB_KEY, sub); } catch (e) { /* só conforto */ }
+  PLANEJAR_SUBS.forEach(s => { document.getElementById('planejar-' + s).hidden = (s !== sub); });
+  document.querySelectorAll('#planejar-toggle button').forEach(b => {
+    const ativo = b.dataset.sub === sub;
+    b.classList.toggle('is-active', ativo);
+    b.setAttribute('aria-selected', String(ativo));
+  });
+  atualizarSeletorDeMes();
+}
+
+/** O mês do topo vale para o Orçamento; Metas, Contas e Fatura não são por mês (a fatura tem a própria navegação). */
+function atualizarSeletorDeMes() {
+  const semMes = abaAtual === 'contas' || abaAtual === 'fatura' || (abaAtual === 'planejar' && planejarSub === 'metas');
+  document.getElementById('month-switcher').hidden = semMes;
+}
+
+function switchTab(tab, sub) {
+  abaAtual = tab;
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
   document.getElementById('tab-' + tab).classList.add('is-active');
 
@@ -398,16 +428,21 @@ function switchTab(tab) {
   document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === abaDoMenu));
 
   document.getElementById('page-title').textContent = TAB_TITLES[tab];
-  // Metas, Contas e Fatura não são por mês (a fatura tem a própria navegação); esconde de vez para não deixar espaço vazio.
-  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'contas' || tab === 'fatura');
+  // Em Planejar, `sub` (se vier, como no "Ver orçamento" do Resumo) escolhe a parte; sem `sub`, vale a última escolha guardada.
+  if (tab === 'planejar') mostrarPlanejarSub(sub || planejarSub);
+  else atualizarSeletorDeMes();
 
   renderAll();
 }
 
 function initTabNav() {
   document.querySelectorAll('[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn.dataset.sub));
   });
+  document.querySelectorAll('#planejar-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => mostrarPlanejarSub(btn.dataset.sub));
+  });
+  mostrarPlanejarSub(planejarSub);
 }
 
 /* ---------- Seletor de mês ---------- */
@@ -786,7 +821,7 @@ function renderAlertasOrcamento() {
       <div class="budget-bar-wrap"><div class="budget-bar ${a.estourou ? 'over' : 'warn'}" style="width:${Math.min(100, a.pct)}%"></div></div>
       <div class="budget-alert-values">${formatCurrency(a.gasto)} de ${formatCurrency(a.planejado)}${a.estourou ? ` · <span class="budget-alert-over">estourou ${formatCurrency(a.gasto - a.planejado)}</span>` : ''}</div>
     </div>
-  `).join('') + (alertas.length > MAX ? `<p class="budget-alert-more">e mais ${alertas.length - MAX} no Orçamento</p>` : '');
+  `).join('') + (alertas.length > MAX ? `<p class="budget-alert-more">e mais ${alertas.length - MAX} em Planejar › Orçamento</p>` : '');
   card.hidden = false;
 }
 
@@ -1181,6 +1216,36 @@ async function deleteLancamento(id) {
 
 /* ---------- Render: Orçamento ---------- */
 
+/** Cartão-resumo do mês no topo do Orçamento. Soma só as categorias que têm valor planejado (gasto sem planejamento
+    não entra, senão o total não bateria com o planejado) e usa os mesmos lançamentos do mês que a lista abaixo. */
+function renderResumoOrcamento(gastoPorCategoria) {
+  const card = document.getElementById('budget-summary');
+  let planejado = 0, gasto = 0;
+  state.categorias.forEach(cat => {
+    const p = state.orcamentos[cat] || 0;
+    if (p <= 0) return;
+    planejado += p;
+    gasto += gastoPorCategoria[cat] || 0;
+  });
+  if (planejado <= 0) { card.hidden = true; return; }
+
+  const pct = (gasto / planejado) * 100;
+  const status = pct > 100 ? 'over' : (pct >= ORCAMENTO_ALERTA_PCT ? 'warn' : 'ok');
+  const pctEl = document.getElementById('budget-summary-pct');
+  pctEl.textContent = state.config.privacidade ? '' : `${Math.floor(pct)}%`;
+  pctEl.className = 'budget-summary-pct ' + status;
+  document.getElementById('budget-summary-gasto').textContent = formatCurrency(gasto);
+  document.getElementById('budget-summary-de').textContent = `de ${formatCurrency(planejado)} planejados`;
+  const barra = document.getElementById('budget-summary-bar');
+  barra.className = 'budget-bar ' + status;
+  barra.style.width = `${Math.min(100, pct)}%`;
+  const resto = document.getElementById('budget-summary-resto');
+  const sobra = planejado - gasto;
+  resto.className = 'budget-summary-resto' + (sobra < 0 ? ' over' : '');
+  resto.textContent = sobra < 0 ? `Passou ${formatCurrency(-sobra)} do planejado` : `Ainda dá para gastar ${formatCurrency(sobra)}`;
+  card.hidden = false;
+}
+
 function renderOrcamento() {
   const lancs = getLancamentosForMonth(currentYear, currentMonth);
   const gastoPorCategoria = {};
@@ -1188,6 +1253,8 @@ function renderOrcamento() {
     if (l.tipo !== 'despesa') continue;
     gastoPorCategoria[l.categoria] = (gastoPorCategoria[l.categoria] || 0) + l.valor;
   }
+
+  renderResumoOrcamento(gastoPorCategoria);
 
   const list = document.getElementById('budget-list');
   const oculto = state.config.privacidade;

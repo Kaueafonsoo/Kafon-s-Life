@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>GRANA — Finanças</title>
-<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, contas, cartões, orçamento e metas." />
+<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, contas, cartões e planejamento (orçamento e metas)." />
 <meta name="theme-color" content="#FDFDFC" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -126,16 +126,10 @@
       <span>Contas</span>
       <span class="nav-dot"></span>
     </button>
-    <button class="nav-item" data-tab="orcamento">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-      <span>Orçamento</span>
+    <button class="nav-item" data-tab="planejar">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>
+      <span>Planejar</span>
       <span class="nav-dot"></span>
-    </button>
-    <button class="nav-item" data-tab="metas">
-      <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
-      <span>Metas</span>
-      <span class="nav-dot"></span>
-    </button>
     </button>
     <div class="sidebar-footer">
       <button class="nav-item nav-item-ghost btn-ajustes">
@@ -241,7 +235,7 @@
       <div class="budget-alert-card" id="budget-alert-card" hidden>
         <div class="budget-alert-head">
           <h2>Atenção ao orçamento</h2>
-          <button type="button" class="btn-link" data-tab="orcamento">Ver orçamento</button>
+          <button type="button" class="btn-link" data-tab="planejar" data-sub="orcamento">Ver orçamento</button>
         </div>
         <div class="budget-alert-list" id="budget-alert-list"></div>
       </div>
@@ -365,22 +359,37 @@
       <div class="fatura-lista" id="fatura-lista"></div>
     </section>
 
-    <!-- ORÇAMENTO -->
-    <section class="tab-panel" id="tab-orcamento">
-      <p class="section-hint">Defina o valor planejado por categoria para o mês. O indicador mostra o quanto já foi gasto em relação ao planejado.</p>
-      <div class="budget-list" id="budget-list"></div>
-    </section>
-
-    <!-- METAS -->
-    <section class="tab-panel" id="tab-metas">
-      <div class="toolbar">
-        <div></div>
-        <button class="btn btn-primary" id="btn-nova-meta">+ Nova meta</button>
+    <!-- PLANEJAR: Orçamento + Metas -->
+    <section class="tab-panel" id="tab-planejar">
+      <div class="range-toggle planejar-toggle" id="planejar-toggle" role="tablist" aria-label="Planejar">
+        <button type="button" role="tab" data-sub="orcamento" class="is-active" aria-selected="true">Orçamento</button>
+        <button type="button" role="tab" data-sub="metas" aria-selected="false">Metas</button>
       </div>
-      <div class="goals-grid" id="goals-grid"></div>
-      <div class="empty-state" id="goals-empty" hidden>
-        <p>Nenhuma meta cadastrada ainda.</p>
-        <button class="btn btn-primary" id="btn-nova-meta-empty">+ Nova meta</button>
+
+      <div class="planejar-sub" id="planejar-orcamento">
+        <div class="budget-summary" id="budget-summary" hidden>
+          <div class="budget-summary-top">
+            <span class="budget-summary-label">Gasto até agora no mês</span>
+            <span class="budget-summary-pct" id="budget-summary-pct"></span>
+          </div>
+          <div class="budget-summary-valores"><strong id="budget-summary-gasto"></strong> <span id="budget-summary-de"></span></div>
+          <div class="budget-bar-wrap"><div class="budget-bar ok" id="budget-summary-bar"></div></div>
+          <div class="budget-summary-resto" id="budget-summary-resto"></div>
+        </div>
+        <p class="section-hint">Defina o valor planejado por categoria para o mês. O indicador mostra o quanto já foi gasto em relação ao planejado.</p>
+        <div class="budget-list" id="budget-list"></div>
+      </div>
+
+      <div class="planejar-sub" id="planejar-metas" hidden>
+        <div class="toolbar">
+          <div></div>
+          <button class="btn btn-primary" id="btn-nova-meta">+ Nova meta</button>
+        </div>
+        <div class="goals-grid" id="goals-grid"></div>
+        <div class="empty-state" id="goals-empty" hidden>
+          <p>Nenhuma meta cadastrada ainda.</p>
+          <button class="btn btn-primary" id="btn-nova-meta-empty">+ Nova meta</button>
+        </div>
       </div>
     </section>
 
@@ -404,13 +413,9 @@
       <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>
       <span>Contas</span>
     </button>
-    <button class="tabbar-item" data-tab="orcamento">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-      <span>Orçamento</span>
-    </button>
-    <button class="tabbar-item" data-tab="metas">
-      <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
-      <span>Metas</span>
+    <button class="tabbar-item" data-tab="planejar">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>
+      <span>Planejar</span>
     </button>
   </nav>
 

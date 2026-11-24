@@ -98,9 +98,10 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 **Contas** — contas e carteiras com saldo, cartões de crédito com limite e fatura (tocar abre a tela da fatura), transferências entre contas.
 
-**Orçamento** — valor planejado x gasto por categoria, com semáforo: verde (tranquilo), amarelo (a partir de 80% do planejado) e vermelho (estourou, mostrando quanto passou). Basta digitar no campo para mudar o planejado.
+**Planejar** — junta Orçamento e Metas numa aba só. No topo há um seletor **Orçamento | Metas**; ele abre no Orçamento e lembra, neste aparelho, a última escolha (`localStorage`, chave `grana_planejar_aba`). O botão "Ver orçamento" do alerta no Resumo abre direto o Orçamento.
 
-**Metas** — objetivos de economia com valor meta, valor atual, percentual concluído e prazo. Metas com menos de 30 dias restantes ficam destacadas.
+- *Orçamento:* um cartão-resumo do mês ("R$ X de R$ Y planejados", barra de progresso e "Ainda dá para gastar R$ Z", ou "Passou R$ Z do planejado") e, abaixo, o valor planejado x gasto por categoria, com semáforo: verde (tranquilo), amarelo (a partir de 80% do planejado) e vermelho (estourou, mostrando quanto passou). Basta digitar no campo para mudar o planejado. O resumo soma só as categorias que têm valor planejado, usa os mesmos lançamentos do mês da lista, respeita o modo privacidade e some se nenhuma categoria tem planejado. Segue o mês escolhido no topo.
+- *Metas:* objetivos de economia com valor meta, valor atual, percentual concluído e prazo (botão "+ Nova meta"). Metas com menos de 30 dias restantes ficam destacadas. Não depende do mês, então o seletor de mês some nessa parte.
 
 *Removidos:* a aba **Desejos**, os gráficos "Evolução patrimonial" e "Categorias mês a mês" e a exportação em PDF. A tabela `wishlist` continua no banco (não foi apagada), só o app deixou de usá-la; ela some junto com a conta em Excluir minha conta.
 
