@@ -23,6 +23,11 @@ let state = {
   orcamentos: {},
   metas: [],
   desejos: [],
+  // Contas, cartões e pagamentos de fatura (js/contas.js). recursoContas fica false se o schema novo ainda não foi aplicado.
+  contas: [],
+  cartoes: [],
+  faturas: [],
+  recursoContas: false,
 };
 
 const PRIORIDADE_ORDEM = { alta: 0, media: 1, baixa: 2 };
@@ -48,6 +53,7 @@ function rowToLancamento(r) {
   return {
     id: r.id, data: r.data, descricao: r.descricao, categoria: r.categoria,
     tipo: r.tipo, formaPagamento: r.forma_pagamento, valor: Number(r.valor), status: r.status,
+    contaId: r.conta_id || null, cartaoId: r.cartao_id || null, faturaRef: r.fatura_ref || null,
   };
 }
 
@@ -105,6 +111,8 @@ async function fetchAllData() {
   state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade, tema: cfg.tema || 'claro' };
   state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
   state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
+
+  await carregarContas();
 }
 
 /* ---------- Utilitários de formatação ---------- */
@@ -358,18 +366,20 @@ function renderInsight() {
 
 /* ---------- Navegação por abas ---------- */
 
-const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', orcamento: 'Orçamento', metas: 'Metas', desejos: 'Desejos' };
+const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', orcamento: 'Orçamento', metas: 'Metas', desejos: 'Desejos' };
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
   document.getElementById('tab-' + tab).classList.add('is-active');
 
-  document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
-  document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
+  // A fatura é aberta a partir de um cartão e não tem item no menu: o destaque fica em "Contas".
+  const abaDoMenu = tab === 'fatura' ? 'contas' : tab;
+  document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === abaDoMenu));
+  document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === abaDoMenu));
 
   document.getElementById('page-title').textContent = TAB_TITLES[tab];
-  // Metas e Desejos não são por mês; esconde de vez para não deixar espaço vazio no layout.
-  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'desejos');
+  // Metas, Desejos, Contas e Fatura não são por mês (a fatura tem a própria navegação); esconde de vez para não deixar espaço vazio.
+  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'desejos' || tab === 'contas' || tab === 'fatura');
 
   renderAll();
 }
@@ -883,7 +893,9 @@ function getFilteredSortedLancamentos() {
   const search = document.getElementById('search-lanc').value.trim().toLowerCase();
   const catFilter = document.getElementById('filter-categoria').value;
   const tipoFilter = document.getElementById('filter-tipo').value;
+  const contaFilter = document.getElementById('filter-conta').value;
 
+  if (contaFilter) lancs = lancs.filter(l => lancamentoPassaNoFiltroConta(l, contaFilter));
   if (search) lancs = lancs.filter(l => l.descricao.toLowerCase().includes(search));
   if (catFilter) lancs = lancs.filter(l => l.categoria === catFilter);
   if (tipoFilter) lancs = lancs.filter(l => l.tipo === tipoFilter);
@@ -916,7 +928,7 @@ function renderLancamentos() {
       <td class="col-desc"><span class="desc-wrap">${iconeCategoriaHtml(l.categoria, l.descricao)}<span class="desc-text">${escapeHtml(l.descricao)}</span></span></td>
       <td class="col-cat"><span class="cat-pill">${escapeHtml(l.categoria)}</span></td>
       <td class="col-tipo"><span class="badge badge-${l.tipo}">${l.tipo === 'receita' ? 'Receita' : 'Despesa'}</span></td>
-      <td class="col-forma">${escapeHtml(l.formaPagamento)}</td>
+      <td class="col-forma">${escapeHtml(rotuloPagamento(l))}</td>
       <td class="valor-cell valor-${l.tipo}">${l.tipo === 'despesa' ? '−' : '+'} ${formatCurrency(l.valor)}</td>
       <td class="col-status"><span class="badge badge-${l.status}">${l.status === 'pago' ? 'Pago' : 'Pendente'}</span></td>
       <td class="col-actions">
@@ -980,7 +992,7 @@ function initLancamentosTab() {
   document.getElementById('lanc-data').addEventListener('change', updateRepeticaoFim);
 }
 
-function openLancamentoModal(id) {
+function openLancamentoModal(id, opcoes = {}) {
   editingLancId = id;
   const form = document.getElementById('form-lancamento');
   form.reset();
@@ -1008,9 +1020,12 @@ function openLancamentoModal(id) {
     document.getElementById('btn-excluir-lancamento').hidden = true;
     document.getElementById('lanc-repeticao-section').hidden = false;
     document.getElementById('lanc-repeticao').value = 'nenhuma';
+    // Vindo do botão "+ Compra no cartão" da fatura, a data é a de hoje (é uma compra de agora).
+    if (opcoes.destino) document.getElementById('lanc-data').value = hojeIso();
     updateRepeticaoTipoUI();
     updateRepeticaoUI();
   }
+  if (state.recursoContas) prepararDestinoLancamento(id ? state.lancamentos.find(x => x.id === id) : null, opcoes.destino);
   openModal('modal-lancamento');
 }
 
@@ -1101,12 +1116,18 @@ async function onSubmitLancamento(e) {
   const dataBase = document.getElementById('lanc-data').value;
   const descricaoBase = document.getElementById('lanc-descricao').value.trim();
   const valorBase = parseFloat(document.getElementById('lanc-valor').value) || 0;
+  // Conta ou cartão onde o lançamento acontece. Compra no cartão não tem forma/status pra escolher.
+  const destino = state.recursoContas ? lerDestinoLancamento() : { contaId: null, cartaoId: null, cartao: null };
   const payloadBase = {
     tipo: document.getElementById('lanc-tipo').value,
     categoria: document.getElementById('lanc-categoria').value,
-    forma_pagamento: document.getElementById('lanc-forma').value,
-    status: document.getElementById('lanc-status').value,
+    forma_pagamento: destino.cartao ? `Crédito ${destino.cartao.nome}` : document.getElementById('lanc-forma').value,
+    status: destino.cartao ? 'pago' : document.getElementById('lanc-status').value,
   };
+  if (state.recursoContas) {
+    payloadBase.conta_id = destino.contaId;
+    payloadBase.cartao_id = destino.cartaoId;
+  }
   const modoRepeticao = id ? 'nenhuma' : document.getElementById('lanc-repeticao').value;
   const qtd = Math.max(1, parseInt(document.getElementById('lanc-repeticao-qtd').value, 10) || 1);
 
@@ -1116,6 +1137,13 @@ async function onSubmitLancamento(e) {
   try {
     if (id) {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
+      if (state.recursoContas) {
+        // Só recalcula a fatura se mudou o cartão ou a data; editar descrição ou valor não tira a compra da fatura em que caiu
+        // (e uma parcela editada não "pula" de fatura sem querer).
+        const antes = state.lancamentos.find(x => x.id === id);
+        const mudou = !antes || antes.cartaoId !== destino.cartaoId || antes.data !== dataBase || !antes.faturaRef;
+        payload.fatura_ref = destino.cartao ? (mudou ? faturaDaCompra(dataBase, destino.cartao) : antes.faturaRef) : null;
+      }
       const { data, error } = await supabaseClient.from('lancamentos').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const idx = state.lancamentos.findIndex(x => x.id === id);
@@ -1130,6 +1158,7 @@ async function onSubmitLancamento(e) {
           data: addMonthsToIso(dataBase, i),
           descricao: descricaoBase,
           valor: valorBase,
+          ...(state.recursoContas ? { fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null } : {}),
         });
       }
       const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
@@ -1151,6 +1180,8 @@ async function onSubmitLancamento(e) {
           data: addMonthsToIso(dataBase, i),
           descricao: `${descricaoBase} (${i + 1}/${qtd})`,
           valor: valorParcela,
+          // Cada parcela cai numa fatura seguinte: a 1ª pela regra do fechamento, as outras mês a mês depois dela.
+          ...(state.recursoContas ? { fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null } : {}),
         });
       }
       const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
@@ -1159,6 +1190,7 @@ async function onSubmitLancamento(e) {
       showToast(`Despesa parcelada em ${qtd}x`);
     } else {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
+      if (state.recursoContas) payload.fatura_ref = destino.cartao ? faturaDaCompra(dataBase, destino.cartao) : null;
       const { data, error } = await supabaseClient
         .from('lancamentos')
         .insert({ ...payload, user_id: session.user.id })
@@ -1168,6 +1200,7 @@ async function onSubmitLancamento(e) {
       state.lancamentos.push(rowToLancamento(data));
       showToast('Lançamento adicionado');
     }
+    if (state.recursoContas) guardarUltimoDestino(destino);
     closeModal('modal-lancamento');
     haptic();
     renderAll();
@@ -1869,8 +1902,15 @@ function checarTravaAoAbrir() {
 let confirmarCallback = null;
 
 /** Abre o modal genérico "tem certeza?" e só chama aoConfirmar se o usuário confirmar. */
-function pedirConfirmacao(mensagem, aoConfirmar) {
+/** Pergunta antes de agir. Por padrão é uma exclusão (botão vermelho "Excluir"); `opcoes` troca título e botão
+    para outras confirmações, como desfazer um pagamento. */
+function pedirConfirmacao(mensagem, aoConfirmar, opcoes = {}) {
   document.getElementById('confirmar-mensagem').textContent = mensagem;
+  document.getElementById('confirmar-titulo').textContent = opcoes.titulo || 'Confirmar exclusão';
+  const botao = document.getElementById('btn-confirmar-exclusao');
+  botao.textContent = opcoes.botao || 'Excluir';
+  botao.classList.toggle('btn-danger-solid', !opcoes.neutro);
+  botao.classList.toggle('btn-primary', !!opcoes.neutro);
   confirmarCallback = aoConfirmar;
   openModal('modal-confirmar');
 }
@@ -1995,7 +2035,7 @@ function iniciarRealtime() {
   const uid = session.user.id;
   const filtro = `user_id=eq.${uid}`;
 
-  realtimeChannel = supabaseClient
+  let canal = supabaseClient
     .channel('grana-mudancas')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'lancamentos', filter: filtro }, (payload) => {
       if (payload.eventType === 'DELETE') {
@@ -2045,8 +2085,11 @@ function iniciarRealtime() {
       localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
       populateCategoriaSelects();
       renderAll();
-    })
-    .subscribe();
+    });
+
+  // Só assina as tabelas novas se elas existem: assinar uma tabela inexistente derrubaria o tempo real de tudo.
+  if (state.recursoContas) canal = adicionarRealtimeContas(canal, filtro);
+  realtimeChannel = canal.subscribe();
 }
 
 function pararRealtime() {
@@ -2136,6 +2179,7 @@ function renderAll() {
   renderOrcamento();
   renderMetas();
   renderDesejos();
+  renderContasTudo();
 }
 
 /* ---------- Init ---------- */
@@ -2154,6 +2198,7 @@ async function carregarDadosIniciais() {
   showSkeleton();
   try {
     await fetchAllData();
+    await garantirContaPadrao();
     aplicarTema(state.config.tema);
     localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
     populateCategoriaSelects();
@@ -2206,6 +2251,7 @@ function init() {
   initCategoriaRanking();
   initCategoriaTrend();
   initLancamentosTab();
+  initContas();
   initMetasTab();
   initDesejosTab();
   initAjustes();

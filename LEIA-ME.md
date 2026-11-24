@@ -34,6 +34,19 @@ Uma caixinha mostra em qual mês cai a última parcela/recorrência antes de voc
 
 Editar um lançamento já existente mexe só naquele — a opção de repetição só aparece ao criar um novo.
 
+## Contas, cartões de crédito e faturas
+
+Aba **Contas** (e a tela da fatura, aberta ao tocar num cartão).
+
+- **Contas e carteiras:** cada uma tem o seu saldo e cada lançamento fica ligado a uma conta (ou a um cartão). O saldo **não é gravado**: é calculado (saldo inicial + receitas pagas − despesas pagas − faturas pagas, até hoje), então nunca fica desatualizado. Lançamentos pendentes ou com data futura ainda não mexem no saldo. Se o saldo não bater com o do banco, abra a conta e digite o saldo certo: o app ajusta o saldo inicial sozinho.
+- **Cartão de crédito:** limite, dia de fechamento e dia de vencimento. Uma compra feita **até o dia do fechamento (inclusive)** entra na fatura que fecha naquele mês; depois dele, na seguinte. O vencimento é o primeiro dia de vencer depois do fechamento (fecha 25 e vence 5 → vence no mês seguinte; fecha 3 e vence 10 → vence no mesmo mês). A fatura é identificada pelo mês do vencimento ("fatura de dezembro" vence em dezembro). As regras estão em `js/faturas.js` e são testadas com `node scripts/testar-faturas.js`.
+- **Parcelas e recorrências no cartão:** cada parcela cai numa fatura seguinte. O **limite usado** conta a compra inteira até as parcelas serem pagas, como no banco.
+- **Pagar fatura:** debita o total da conta escolhida e marca a fatura como paga (dá para desfazer). O pagamento fica na tabela `faturas`, **não** em lançamentos, para a despesa não contar duas vezes (ela já contou na compra); por isso o Resumo e o Orçamento não mudam ao pagar. Há também a opção de só marcar como paga, sem debitar de nenhuma conta, útil para faturas antigas.
+- **Lançamentos antigos no crédito:** ao criar um cartão, o app oferece trazer as despesas que você já lançou com uma forma de pagamento como "Crédito Nubank" e as coloca nas faturas certas.
+- Contas e cartões com histórico não podem ser apagados: são **arquivados** (somem das listas, o histórico fica) e podem ser reativados.
+
+**Antes de publicar esta versão no site:** rode o `supabase/schema.sql` inteiro no SQL Editor do Supabase. Ele só **adiciona** (tabelas `contas`, `cartoes`, `faturas` e três colunas em `lancamentos`), não apaga nada, e pode ser rodado várias vezes. Quem já tem lançamentos ganha uma "Conta principal" e os lançamentos antigos (menos os pagos no crédito) passam a apontar para ela. Se o site subir **antes** do SQL, nada quebra: sem as tabelas novas, a parte de contas fica escondida e o app funciona como antes.
+
 ## Confirmação antes de excluir
 
 Excluir um lançamento, meta ou desejo sempre pede confirmação antes. Não tem como apagar sem querer com um toque só.

@@ -1,10 +1,12 @@
-const CACHE_NAME = 'financas-v7';
+const CACHE_NAME = 'financas-v8';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
   './js/charts.js',
+  './js/faturas.js',
+  './js/contas.js',
   './js/supabase-config.js',
   './js/vendor/supabase.js',
   './manifest.json',

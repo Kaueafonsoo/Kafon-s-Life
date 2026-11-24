@@ -136,8 +136,113 @@ create policy "push_subscriptions: dono pode tudo"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- ===== contas, cartões de crédito e faturas =====
+-- Tudo daqui é ADICIONAL: nenhuma tabela ou coluna existente é apagada ou alterada, e os dados que você já
+-- tem continuam exatamente como estão. Seguro rodar mais de uma vez.
+--
+-- Como o app usa:
+--  * contas: onde o dinheiro está (conta corrente, carteira...). O saldo é calculado pelos lançamentos pagos
+--    (saldo_inicial + receitas - despesas - faturas pagas), então não existe coluna "saldo" para ficar desatualizada.
+--  * cartoes: limite, dia de fechamento e dia de vencimento.
+--  * faturas: guarda só o PAGAMENTO de uma fatura (qual cartão, qual mês, quanto, de qual conta). O valor da
+--    fatura em si é a soma dos lançamentos daquele cartão naquele mês (lancamentos.fatura_ref). O pagamento fica
+--    fora de "lancamentos" de propósito: senão a despesa contaria duas vezes (na compra e no pagamento).
+
+create table if not exists contas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  nome text not null,
+  tipo text not null default 'corrente' check (tipo in ('corrente', 'poupanca', 'carteira', 'investimento', 'outro')),
+  saldo_inicial numeric(12,2) not null default 0,
+  arquivada boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists contas_user_nome_idx on contas (user_id, lower(nome));
+
+alter table contas enable row level security;
+drop policy if exists "contas: dono pode tudo" on contas;
+create policy "contas: dono pode tudo"
+  on contas for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create table if not exists cartoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  nome text not null,
+  limite numeric(12,2) not null default 0 check (limite >= 0),
+  dia_fechamento int not null check (dia_fechamento between 1 and 31),
+  dia_vencimento int not null check (dia_vencimento between 1 and 31),
+  conta_pagamento_id uuid references contas(id) on delete set null,
+  arquivado boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists cartoes_user_nome_idx on cartoes (user_id, lower(nome));
+
+alter table cartoes enable row level security;
+drop policy if exists "cartoes: dono pode tudo" on cartoes;
+create policy "cartoes: dono pode tudo"
+  on cartoes for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create table if not exists faturas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  cartao_id uuid not null references cartoes(id) on delete cascade,
+  referencia text not null check (referencia ~ '^[0-9]{4}-[0-9]{2}$'),  -- mês do vencimento, ex.: 2026-12
+  valor_pago numeric(12,2) not null check (valor_pago >= 0),
+  pago_em date not null,
+  conta_id uuid references contas(id) on delete set null,               -- null = só marcou como paga, sem debitar de conta
+  created_at timestamptz not null default now(),
+  unique (cartao_id, referencia)
+);
+
+alter table faturas enable row level security;
+drop policy if exists "faturas: dono pode tudo" on faturas;
+create policy "faturas: dono pode tudo"
+  on faturas for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Cada lançamento fica ligado a UMA conta (conta_id) OU a um cartão (cartao_id + fatura_ref), nunca aos dois.
+-- Colunas novas e opcionais: os lançamentos antigos continuam válidos.
+alter table lancamentos add column if not exists conta_id uuid references contas(id) on delete set null;
+alter table lancamentos add column if not exists cartao_id uuid references cartoes(id) on delete set null;
+alter table lancamentos add column if not exists fatura_ref text;
+
+do $$
+begin
+  alter table lancamentos add constraint lancamentos_conta_ou_cartao check (conta_id is null or cartao_id is null);
+exception when duplicate_object then null;
+end $$;
+
+create index if not exists lancamentos_conta_idx on lancamentos (conta_id);
+create index if not exists lancamentos_cartao_fatura_idx on lancamentos (cartao_id, fatura_ref);
+
+-- Migração dos dados que já existem:
+-- 1) quem já tem lançamentos e nenhuma conta ganha uma "Conta principal";
+-- 2) lançamentos antigos sem conta passam a apontar para ela — menos os pagos no crédito, que
+--    não saem da conta: ficam sem vínculo até você criar o cartão e usar "Vincular lançamentos antigos".
+-- O saldo inicial fica zerado; no app, em Contas, você informa o saldo real da conta.
+insert into contas (user_id, nome, tipo)
+select u.user_id, 'Conta principal', 'corrente'
+from (select distinct user_id from lancamentos) u
+where not exists (select 1 from contas c where c.user_id = u.user_id);
+
+update lancamentos l
+set conta_id = (
+  select c.id from contas c
+  where c.user_id = l.user_id and not c.arquivada
+  order by c.created_at
+  limit 1
+)
+where l.conta_id is null
+  and l.cartao_id is null
+  and l.forma_pagamento !~* 'cr[eé]dito';
+
 -- ===== sincronização em tempo real =====
--- Liga o Realtime nas 5 tabelas: uma alteração feita num aparelho aparece nos
+-- Liga o Realtime nas tabelas do app: uma alteração feita num aparelho aparece nos
 -- outros sem precisar recarregar a página. O bloco "exception" evita erro se
 -- você rodar este script de novo e a tabela já estiver na publicação.
 --
@@ -150,6 +255,9 @@ alter table orcamentos replica identity full;
 alter table metas replica identity full;
 alter table wishlist replica identity full;
 alter table config replica identity full;
+alter table contas replica identity full;
+alter table cartoes replica identity full;
+alter table faturas replica identity full;
 
 do $$
 begin
@@ -178,5 +286,23 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.config;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.contas;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.cartoes;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.faturas;
 exception when duplicate_object then null;
 end $$;

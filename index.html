@@ -91,6 +91,11 @@
       <span>Lançamentos</span>
       <span class="nav-dot"></span>
     </button>
+    <button class="nav-item" data-tab="contas" data-recurso="contas">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>
+      <span>Contas</span>
+      <span class="nav-dot"></span>
+    </button>
     <button class="nav-item" data-tab="orcamento">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
       <span>Orçamento</span>
@@ -257,6 +262,9 @@
         <select id="filter-categoria">
           <option value="">Todas categorias</option>
         </select>
+        <select id="filter-conta" data-recurso="contas">
+          <option value="">Todas as contas</option>
+        </select>
         <select id="filter-tipo">
           <option value="">Todos tipos</option>
           <option value="receita">Receita</option>
@@ -286,6 +294,69 @@
           <button class="btn btn-primary" id="btn-novo-lancamento-empty">+ Novo lançamento</button>
         </div>
       </div>
+    </section>
+
+    <!-- CONTAS E CARTÕES -->
+    <section class="tab-panel" id="tab-contas">
+      <div class="contas-resumo" id="contas-resumo"></div>
+
+      <div class="secao-head">
+        <h2>Contas e carteiras</h2>
+        <button class="btn btn-primary" id="btn-nova-conta">+ Nova conta</button>
+      </div>
+      <div class="contas-grid" id="contas-grid"></div>
+
+      <div class="secao-head">
+        <h2>Cartões de crédito</h2>
+        <button class="btn btn-primary" id="btn-novo-cartao">+ Novo cartão</button>
+      </div>
+      <div class="cartoes-grid" id="cartoes-grid"></div>
+
+      <details class="arquivados" id="arquivados" hidden>
+        <summary id="arquivados-titulo">Arquivados</summary>
+        <div class="arquivados-lista" id="arquivados-lista"></div>
+      </details>
+    </section>
+
+    <!-- FATURA DO CARTÃO (aberta a partir de um cartão, não aparece no menu) -->
+    <section class="tab-panel" id="tab-fatura">
+      <button type="button" class="btn-link fatura-voltar" id="btn-fatura-voltar">&larr; Contas e cartões</button>
+      <div class="fatura-card" id="fatura-card">
+        <div class="fatura-nav">
+          <button type="button" class="fatura-seta" id="btn-fatura-anterior" aria-label="Fatura anterior">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="fatura-titulo">
+            <small id="fatura-cartao-nome">Cartão</small>
+            <strong id="fatura-titulo">Fatura</strong>
+          </div>
+          <button type="button" class="fatura-seta" id="btn-fatura-proxima" aria-label="Próxima fatura">
+            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="fatura-total-bloco">
+          <span class="fatura-total-label">Total da fatura</span>
+          <span class="fatura-total" id="fatura-total">R$ 0,00</span>
+          <span class="fatura-status" id="fatura-status"></span>
+        </div>
+        <div class="fatura-datas">
+          <div><small>Fecha em</small><strong id="fatura-fecha">—</strong></div>
+          <div><small>Vence em</small><strong id="fatura-vence">—</strong></div>
+        </div>
+        <div class="limite-bloco">
+          <div class="limite-linha"><span>Limite usado</span><strong id="fatura-limite-usado">R$ 0,00</strong></div>
+          <div class="limite-barra"><span id="fatura-limite-barra"></span></div>
+          <div class="limite-linha limite-sub"><span id="fatura-limite-disponivel">Disponível R$ 0,00</span><span id="fatura-limite-total">de R$ 0,00</span></div>
+        </div>
+        <p class="fatura-aviso" id="fatura-aviso" hidden></p>
+        <div class="fatura-acoes">
+          <button type="button" class="btn btn-primary" id="btn-pagar-fatura">Pagar fatura</button>
+          <button type="button" class="btn btn-ghost" id="btn-desfazer-pagamento" hidden>Desfazer pagamento</button>
+          <button type="button" class="btn btn-ghost" id="btn-compra-cartao">+ Compra no cartão</button>
+        </div>
+      </div>
+      <h2 class="fatura-lista-titulo">Compras desta fatura</h2>
+      <div class="fatura-lista" id="fatura-lista"></div>
     </section>
 
     <!-- ORÇAMENTO -->
@@ -335,6 +406,10 @@
     <button class="tabbar-item" data-tab="lancamentos">
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <span>Lançamentos</span>
+    </button>
+    <button class="tabbar-item" data-tab="contas" data-recurso="contas">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>
+      <span>Contas</span>
     </button>
     <button class="tabbar-item" data-tab="orcamento">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
@@ -389,7 +464,12 @@
           <select id="lanc-categoria" required></select>
         </div>
       </div>
-      <div class="form-row form-row-split">
+      <div class="form-row" id="lanc-conta-row" data-recurso="contas">
+        <label for="lanc-conta">Conta ou cartão</label>
+        <select id="lanc-conta"></select>
+        <span class="field-hint" id="lanc-conta-hint" hidden></span>
+      </div>
+      <div class="form-row form-row-split" id="lanc-forma-status-row">
         <div>
           <label for="lanc-forma">Forma de Pagamento</label>
           <select id="lanc-forma" required></select>
@@ -583,11 +663,135 @@
   </div>
 </div>
 
+<!-- Modal: Conta -->
+<div class="modal-overlay" id="modal-conta" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-conta-title">Nova conta</h3>
+      <button class="modal-close" data-close-modal="modal-conta">&times;</button>
+    </div>
+    <form id="form-conta">
+      <input type="hidden" id="conta-id" />
+      <div class="form-row">
+        <label for="conta-nome">Nome</label>
+        <input type="text" id="conta-nome" placeholder="Ex: Nubank, Itaú, Carteira" maxlength="40" required />
+      </div>
+      <div class="form-row">
+        <label for="conta-tipo">Tipo</label>
+        <select id="conta-tipo">
+          <option value="corrente">Conta corrente</option>
+          <option value="poupanca">Poupança</option>
+          <option value="carteira">Carteira (dinheiro)</option>
+          <option value="investimento">Investimentos</option>
+          <option value="outro">Outra</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="conta-saldo" id="conta-saldo-label">Saldo atual (R$)</label>
+        <input type="number" id="conta-saldo" step="0.01" placeholder="0,00" required />
+        <span class="field-hint" id="conta-saldo-hint">O app calcula o saldo a partir dos lançamentos pagos. Se não bater com o do banco, corrija aqui que ele se ajusta.</span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-conta" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-conta">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Cartão -->
+<div class="modal-overlay" id="modal-cartao" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-cartao-title">Novo cartão</h3>
+      <button class="modal-close" data-close-modal="modal-cartao">&times;</button>
+    </div>
+    <form id="form-cartao">
+      <input type="hidden" id="cartao-id" />
+      <div class="form-row">
+        <label for="cartao-nome">Nome</label>
+        <input type="text" id="cartao-nome" placeholder="Ex: Nubank, C6, Itaú" maxlength="40" required />
+      </div>
+      <div class="form-row">
+        <label for="cartao-limite">Limite (R$)</label>
+        <input type="number" id="cartao-limite" step="0.01" min="0" placeholder="0,00" required />
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="cartao-fechamento">Dia do fechamento</label>
+          <input type="number" id="cartao-fechamento" min="1" max="31" placeholder="Ex: 25" required />
+        </div>
+        <div>
+          <label for="cartao-vencimento">Dia do vencimento</label>
+          <input type="number" id="cartao-vencimento" min="1" max="31" placeholder="Ex: 5" required />
+        </div>
+      </div>
+      <span class="field-hint cartao-dica" id="cartao-dica">Compras feitas até o dia do fechamento entram na fatura que fecha; depois dele, na fatura seguinte.</span>
+      <div class="form-row">
+        <label for="cartao-conta">Pagar a fatura com</label>
+        <select id="cartao-conta"></select>
+        <span class="field-hint">Conta sugerida na hora de pagar. Você pode trocar a cada pagamento.</span>
+      </div>
+      <div class="form-row vincular-antigos" id="vincular-antigos" hidden>
+        <label>Trazer lançamentos antigos</label>
+        <span class="field-hint">Você já lançou compras no crédito antes? Escolha a forma de pagamento que usava para este cartão e o app as coloca nas faturas certas.</span>
+        <div class="inline-actions">
+          <select id="vincular-forma"></select>
+          <button type="button" class="btn btn-ghost" id="btn-vincular">Vincular</button>
+        </div>
+        <label class="check-linha"><input type="checkbox" id="vincular-pagar-vencidas" checked /> Marcar como pagas as faturas que já venceram (não mexe no saldo das contas)</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-cartao" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-cartao">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Pagar fatura -->
+<div class="modal-overlay" id="modal-pagar-fatura" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Pagar fatura</h3>
+      <button class="modal-close" data-close-modal="modal-pagar-fatura">&times;</button>
+    </div>
+    <form id="form-pagar-fatura">
+      <div class="pagar-resumo">
+        <small id="pagar-cartao">Cartão</small>
+        <strong id="pagar-valor">R$ 0,00</strong>
+        <span id="pagar-ref">Fatura</span>
+      </div>
+      <div class="form-row">
+        <label for="pagar-conta">Pagar com a conta</label>
+        <select id="pagar-conta"></select>
+        <span class="field-hint" id="pagar-conta-hint"></span>
+      </div>
+      <div class="form-row">
+        <label for="pagar-data">Data do pagamento</label>
+        <input type="date" id="pagar-data" required />
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-pagar-fatura">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar pagamento</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Modal: Confirmação -->
 <div class="modal-overlay" id="modal-confirmar" hidden>
   <div class="modal modal-confirm">
     <div class="modal-header">
-      <h3>Confirmar exclusão</h3>
+      <h3 id="confirmar-titulo">Confirmar exclusão</h3>
       <button class="modal-close" data-close-modal="modal-confirmar">&times;</button>
     </div>
     <div class="modal-confirm-body">
@@ -607,6 +811,8 @@
 <script src="js/vendor/supabase.js" defer></script>
 <script src="js/supabase-config.js" defer></script>
 <script src="js/charts.js" defer></script>
+<script src="js/faturas.js" defer></script>
+<script src="js/contas.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>
 </html>

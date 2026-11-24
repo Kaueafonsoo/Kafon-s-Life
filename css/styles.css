@@ -933,7 +933,7 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta, #form-desejo, #form-ajustes { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura { padding: 18px 22px 22px; }
 .modal-confirm-body { padding: 18px 22px 22px; }
 .modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
 .form-row[hidden] { display: none; }
@@ -1076,6 +1076,189 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 :root[data-theme="dark"] .tabbar { background: #F4F1EC; box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.8); }
 :root[data-theme="dark"] .tabbar-item { color: #8A877E; }
 :root[data-theme="dark"] .tabbar-item.is-active { color: #0B0B0B; background: rgba(11, 11, 11, 0.09); }
+
+/* ===== Contas, cartões e fatura ===== */
+/* Sem o schema novo no Supabase, tudo que é de contas some e o app volta a ser o de antes. */
+.sem-contas [data-recurso="contas"] { display: none !important; }
+
+.secao-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 12px 14px 12px 18px; margin: 22px 0 12px;
+}
+.secao-head:first-of-type { margin-top: 0; }
+.secao-head h2 { font-size: 15px; margin: 0; }
+.secao-head .btn { padding: 8px 14px; font-size: 13px; }
+
+.contas-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+.contas-resumo-item {
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;
+}
+.contas-resumo-item small { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.contas-resumo-item strong { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.contas-resumo-item strong.negativo, .conta-saldo.negativo { color: var(--expense); }
+
+.contas-grid, .cartoes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.vazio-contas {
+  grid-column: 1 / -1; margin: 0; background: var(--surface); border-radius: var(--radius);
+  padding: 22px 20px; color: var(--text-muted); font-size: 13.5px; line-height: 1.5; text-align: center;
+}
+
+.conta-card, .cartao-card { text-align: left; cursor: pointer; outline: none; }
+.conta-card {
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.conta-card:hover, .conta-card:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow); }
+.conta-topo { display: flex; align-items: center; gap: 12px; }
+.conta-ico {
+  width: 38px; height: 38px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text);
+}
+.conta-ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.conta-nome { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.conta-nome strong { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conta-nome small { font-size: 12px; color: var(--text-muted); }
+.conta-editar { width: 32px; height: 32px; }
+.conta-saldo { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.conta-info { font-size: 11.5px; color: var(--text-faint); }
+
+/* Cartão de crédito: mesmo estilo do cartão de saldo do Resumo (escuro no modo claro, claro no modo escuro) */
+.cartao-card {
+  position: relative; overflow: hidden; color: #fff; border-radius: var(--radius);
+  background: linear-gradient(135deg, #2B2B2B 0%, #0E0E0E 70%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 18px 32px -22px rgba(11, 11, 11, 0.7);
+  padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px;
+  transition: transform .15s ease;
+}
+.cartao-card:hover, .cartao-card:focus-visible { transform: translateY(-2px); }
+.cartao-card::after {
+  content: ""; position: absolute; width: 150px; height: 150px; right: -50px; top: -70px; border-radius: 50%;
+  border: 20px solid rgba(255, 255, 255, 0.05); pointer-events: none;
+}
+.cartao-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; z-index: 1; }
+.cartao-topo strong { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.02em; }
+.cartao-card .conta-editar { background: rgba(255, 255, 255, 0.1); border-color: transparent; color: #fff; }
+.cartao-card .conta-editar:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.cartao-fatura { display: flex; flex-direction: column; gap: 2px; }
+.cartao-fatura small { font-size: 12px; color: #B5B3AB; }
+.cartao-fatura small.alerta { color: #FF9E9E; font-weight: 700; }
+.cartao-valor { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.cartao-limite { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #B5B3AB; }
+.cartao-rodape { font-size: 11.5px; color: #8E8C84; }
+
+.limite-barra { height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.limite-barra span { display: block; height: 100%; border-radius: 999px; background: #fff; transition: width .4s ease; }
+.limite-barra span.cheio { background: #FF9E9E; }
+
+:root[data-theme="dark"] .cartao-card {
+  color: #0B0B0B; background: #F4F1EC; box-shadow: 0 18px 32px -22px rgba(0, 0, 0, 0.8);
+}
+:root[data-theme="dark"] .cartao-card::after { border-color: rgba(11, 11, 11, 0.05); }
+:root[data-theme="dark"] .cartao-card .conta-editar { background: rgba(11, 11, 11, 0.08); color: #0B0B0B; }
+:root[data-theme="dark"] .cartao-card .conta-editar:hover { background: rgba(11, 11, 11, 0.16); color: #0B0B0B; }
+:root[data-theme="dark"] .cartao-fatura small, :root[data-theme="dark"] .cartao-limite { color: #6B685F; }
+:root[data-theme="dark"] .cartao-fatura small.alerta { color: #B23B33; }
+:root[data-theme="dark"] .cartao-rodape { color: #7A776F; }
+:root[data-theme="dark"] .limite-barra { background: rgba(11, 11, 11, 0.12); }
+:root[data-theme="dark"] .limite-barra span { background: #0B0B0B; }
+:root[data-theme="dark"] .limite-barra span.cheio { background: #B23B33; }
+
+.arquivados { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-top: 22px; padding: 4px 18px; }
+.arquivados[hidden] { display: none; }
+.arquivados summary { cursor: pointer; padding: 12px 0; font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+.arquivado-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.arquivado-item small { color: var(--text-faint); }
+
+/* Tela da fatura */
+.fatura-voltar {
+  display: inline-flex; align-items: center; margin-bottom: 14px; padding: 9px 16px; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--shadow-sm); text-decoration: none; color: var(--text); font-weight: 600; font-size: 13px;
+}
+.fatura-card {
+  background: #0B0B0B; color: #fff; border-radius: var(--radius-lg); padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 16px; box-shadow: 0 22px 40px -22px rgba(11, 11, 11, 0.6);
+}
+.fatura-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fatura-titulo { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.fatura-titulo small { font-size: 12px; color: #A8A69E; }
+.fatura-titulo strong { font-family: var(--font-display); font-size: 16px; }
+.fatura-seta {
+  width: 38px; height: 38px; border-radius: 50%; border: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.1); color: #fff;
+}
+.fatura-seta:hover { background: rgba(255, 255, 255, 0.2); }
+.fatura-seta svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fatura-total-bloco { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.fatura-total-label { font-size: 12.5px; color: #A8A69E; }
+.fatura-total { font-family: var(--font-display); font-size: 38px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.fatura-status { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+.fatura-status.status-paga { background: rgba(124, 211, 154, 0.2); color: #8FD9A8; }
+.fatura-status.status-vencida { background: rgba(238, 143, 143, 0.2); color: #F2A0A0; }
+.fatura-datas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fatura-datas div { background: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.fatura-datas small { font-size: 11.5px; color: #A8A69E; }
+.fatura-datas strong { font-family: var(--font-display); font-size: 15px; }
+.limite-bloco { display: flex; flex-direction: column; gap: 8px; }
+.limite-linha { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.limite-linha strong { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.limite-sub { font-size: 12px; color: #A8A69E; }
+.fatura-aviso { margin: 0; font-size: 12.5px; line-height: 1.5; color: #E5C98B; background: rgba(229, 201, 139, 0.12); border-radius: 12px; padding: 10px 12px; }
+.fatura-aviso[hidden] { display: none; }
+.fatura-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.fatura-acoes .btn[hidden] { display: none; }
+.fatura-card .btn-primary { background: #fff; color: #0B0B0B; }
+.fatura-card .btn-ghost { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: transparent; }
+.fatura-card .btn-ghost:hover { background: rgba(255, 255, 255, 0.18); }
+:root[data-theme="dark"] .fatura-card { background: #F4F1EC; color: #0B0B0B; box-shadow: 0 22px 40px -22px rgba(0, 0, 0, 0.8); }
+:root[data-theme="dark"] .fatura-titulo small, :root[data-theme="dark"] .fatura-total-label, :root[data-theme="dark"] .fatura-datas small, :root[data-theme="dark"] .limite-sub { color: #6B685F; }
+:root[data-theme="dark"] .fatura-seta, :root[data-theme="dark"] .fatura-status, :root[data-theme="dark"] .fatura-datas div { background: rgba(11, 11, 11, 0.07); color: #0B0B0B; }
+:root[data-theme="dark"] .fatura-seta:hover { background: rgba(11, 11, 11, 0.14); }
+:root[data-theme="dark"] .fatura-status.status-paga { background: rgba(46, 125, 79, 0.16); color: #2E7D4F; }
+:root[data-theme="dark"] .fatura-status.status-vencida { background: rgba(178, 59, 51, 0.14); color: #B23B33; }
+:root[data-theme="dark"] .fatura-aviso { color: #7A5A12; background: rgba(122, 90, 18, 0.12); }
+:root[data-theme="dark"] .fatura-card .btn-primary { background: #0B0B0B; color: #fff; }
+:root[data-theme="dark"] .fatura-card .btn-ghost { background: rgba(11, 11, 11, 0.08); color: #0B0B0B; }
+:root[data-theme="dark"] .fatura-card .btn-ghost:hover { background: rgba(11, 11, 11, 0.15); }
+
+.fatura-lista-titulo { background: var(--surface); margin: 18px 0 0; padding: 16px 18px 6px; border-radius: var(--radius) var(--radius) 0 0; font-size: 15px; }
+.fatura-lista { background: var(--surface); border-radius: 0 0 var(--radius) var(--radius); padding: 0 18px 8px; box-shadow: var(--shadow-sm); }
+.fatura-lista .vazio-contas { background: none; padding: 18px 0; }
+.fatura-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border); cursor: pointer; outline: none; }
+.fatura-item:first-child { border-top: none; }
+.fatura-item:hover .fatura-item-texto strong, .fatura-item:focus-visible .fatura-item-texto strong { text-decoration: underline; }
+.fatura-item-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fatura-item-texto strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fatura-item-texto small { font-size: 12px; color: var(--text-muted); }
+.fatura-item-valor { font-family: var(--font-display); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Modais de cartão e pagamento */
+.cartao-dica { display: block; margin: -4px 0 14px; padding: 9px 12px; background: var(--surface-2); border-radius: 12px; line-height: 1.5; }
+.vincular-antigos { padding: 12px; background: var(--surface-2); border-radius: 14px; }
+.vincular-antigos .inline-actions { flex-wrap: nowrap; }
+.vincular-antigos select { flex: 1 1 auto; min-width: 0; }
+.vincular-antigos .inline-actions .btn { flex: 0 0 auto; }
+.check-linha { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; font-weight: 500; color: var(--text-muted); cursor: pointer; }
+.check-linha input { margin-top: 2px; flex-shrink: 0; }
+.pagar-resumo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; padding: 16px; border-radius: 16px; background: #0B0B0B; color: #fff; }
+.pagar-resumo small { color: #A8A69E; font-size: 12.5px; }
+.pagar-resumo strong { font-family: var(--font-display); font-size: 30px; letter-spacing: -0.03em; }
+.pagar-resumo span { font-size: 12.5px; color: #A8A69E; }
+:root[data-theme="dark"] .pagar-resumo { background: #F4F1EC; color: #0B0B0B; }
+:root[data-theme="dark"] .pagar-resumo small, :root[data-theme="dark"] .pagar-resumo span { color: #6B685F; }
+
+/* Com 6 itens a barra de baixo fica apertada: rótulos e ícones um pouco menores */
+@media (max-width: 768px) {
+  .tabbar { left: 8px; right: 8px; padding: 5px; }
+  .tabbar-item { font-size: 9.5px; letter-spacing: -0.01em; gap: 2px; border-radius: 20px; }
+  .tabbar-item svg { width: 20px; height: 20px; }
+  .contas-resumo-item { padding: 14px; }
+  .contas-resumo-item strong { font-size: 18px; }
+  .fatura-total { font-size: 34px; }
+  .fatura-card { padding: 18px 16px; }
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
