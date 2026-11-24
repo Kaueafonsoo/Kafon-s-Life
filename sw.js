@@ -1,10 +1,11 @@
-const CACHE_NAME = 'financas-v10';
+const CACHE_NAME = 'financas-v11';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
   './js/charts.js',
+  './js/validacoes.js',
   './js/faturas.js',
   './js/vencimentos.js',
   './js/contas.js',
@@ -33,17 +34,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Só o próprio site entra no cache. Respostas de outros endereços (o Supabase, com os dados financeiros da pessoa)
+  // e as chamadas /api/ passam direto para a rede e nunca são guardadas.
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then((response) => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(req))
   );
 });
 

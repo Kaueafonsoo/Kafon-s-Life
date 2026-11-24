@@ -944,6 +944,18 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   line-height: 1.45;
 }
 .auth-message.auth-message-ok { color: var(--income); background: var(--income-bg); }
+.excluir-aviso { margin: 0 0 10px; font-size: 14px; line-height: 1.55; color: var(--text); }
+.excluir-dica { display: block; margin-bottom: 16px; }
+#btn-confirmar-excluir-usuario:disabled { opacity: 0.45; cursor: not-allowed; }
+.zona-dados .inline-actions .btn { flex: 1 1 160px; text-align: center; text-decoration: none; }
+#excluir-erro[hidden] { display: none; }
+.auth-esqueci { display: block; margin: 16px auto 0; font-size: 13px; }
+.auth-esqueci[hidden] { display: none; }
+.auth-help { margin: 0 0 18px; font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
+.auth-legal { margin: 28px 0 0; text-align: center; font-size: 12px; }
+.auth-legal a { color: var(--text-faint); text-decoration: underline; text-underline-offset: 3px; }
+.auth-legal a:hover { color: var(--text); }
+#form-recuperar[hidden], #form-nova-senha[hidden] { display: none; }
 .auth-submit { width: 100%; padding: 14px 0; font-size: 14.5px; }
 
 /* ===== Modal ===== */
@@ -975,7 +987,7 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura, #form-transferencia { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura, #form-transferencia, #form-excluir-usuario { padding: 18px 22px 22px; }
 .modal-confirm-body { padding: 18px 22px 22px; }
 .modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
 .form-row[hidden] { display: none; }
@@ -1120,10 +1132,6 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 :root[data-theme="dark"] .tabbar-item.is-active { color: #0B0B0B; background: rgba(11, 11, 11, 0.09); }
 
 /* ===== Contas, cartões e fatura ===== */
-/* Sem o schema novo no Supabase, tudo que é de contas some e o app volta a ser o de antes. */
-.sem-contas [data-recurso="contas"] { display: none !important; }
-.sem-transf [data-recurso="transf"] { display: none !important; }
-.sem-import [data-recurso="import"] { display: none !important; }
 
 .secao-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

@@ -8,3 +8,9 @@ capacitor.config.json
 certs/
 segredos-vercel.txt
 *.pdf
+
+# Desenvolvimento, banco e documentação: não precisam estar no site
+servidor.js
+_teste/
+supabase/
+*.md

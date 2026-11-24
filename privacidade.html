@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Política de Privacidade — GRANA</title>
+<link rel="icon" href="icons/icon-192-v2.png" />
+<style>
+  @font-face { font-family: "Work Sans"; font-weight: 400 700; font-style: normal; font-display: swap; src: url("fonts/work-sans.woff2") format("woff2"); }
+  :root { --bg: #FDFDFC; --text: #0B0B0B; --muted: #57554C; --line: #E4E2DC; --card: #F4F3EF; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0F0D0B; --text: #F4F1EC; --muted: #B3AC9F; --line: #2C261E; --card: #171310; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  .topo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .topo img { width: 36px; height: 36px; border-radius: 10px; }
+  .topo strong { letter-spacing: 0.08em; font-size: 14px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 { font-size: 17px; margin: 34px 0 8px; letter-spacing: -0.01em; }
+  p, li { font-size: 15.5px; }
+  p { margin: 0 0 12px; }
+  ul { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  .data { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .resumo { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: 0 0 8px; }
+  .resumo p:last-child { margin-bottom: 0; }
+  a { color: inherit; text-underline-offset: 3px; }
+  .voltar { display: inline-block; margin-top: 36px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="topo"><img src="icons/icon-192-v2.png" alt="" /><strong>GRANA</strong></div>
+  <h1>Política de Privacidade</h1>
+  <p class="data">Última atualização: 24 de novembro de 2026</p>
+
+  <div class="resumo">
+    <p><strong>Em resumo:</strong> o GRANA guarda só o que você digita para controlar suas finanças, mostra isso só para você, não tem anúncios, não vende nem repassa seus dados e você pode apagar tudo, de uma vez, em <strong>Ajustes → Excluir minha conta</strong>.</p>
+  </div>
+
+  <h2>1. Quem é o responsável</h2>
+  <p>O GRANA é um aplicativo de finanças pessoais mantido por seu desenvolvedor independente, que é o controlador dos dados tratados aqui, nos termos da Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018). O contato para qualquer assunto de privacidade está na seção 9.</p>
+
+  <h2>2. Quais dados o GRANA guarda</h2>
+  <ul>
+    <li><strong>Conta:</strong> seu e-mail e a senha que você escolhe. A senha é guardada de forma protegida (criptografada de modo irreversível) pelo serviço de autenticação; nem o desenvolvedor consegue ver a sua senha.</li>
+    <li><strong>O que você lança no app:</strong> lançamentos (descrição, valor, data, categoria, forma de pagamento), contas e saldos, cartões de crédito (apenas nome, limite e dias de melhor compra e vencimento), faturas pagas, transferências, orçamentos, metas, lista de desejos, suas categorias e formas de pagamento.</li>
+    <li><strong>Preferências:</strong> seu nome (opcional), dia do salário, tema claro ou escuro e o modo de ocultar valores.</li>
+    <li><strong>Extratos importados:</strong> o arquivo OFX ou CSV é lido dentro do seu aparelho e <em>não é enviado a lugar nenhum</em>. Só as linhas que você confirma na tela de revisão viram lançamentos.</li>
+    <li><strong>Notificações:</strong> se você ativar os lembretes no navegador, é guardado o endereço técnico que o seu aparelho fornece para receber avisos. No app Android/iPhone, os lembretes são agendados no próprio aparelho.</li>
+    <li><strong>Face ID / digital:</strong> a trava biométrica é feita pelo sistema do seu aparelho. O GRANA nunca recebe nem guarda a sua biometria.</li>
+  </ul>
+
+  <h2>3. O que o GRANA não coleta</h2>
+  <p>Não pedimos nem guardamos número de cartão, senha de banco, CPF, localização, contatos, fotos ou dados de outros aplicativos. Não usamos ferramentas de análise de comportamento, publicidade ou rastreadores de terceiros.</p>
+
+  <h2>4. Para que os dados são usados</h2>
+  <p>Exclusivamente para o app funcionar para você: entrar na sua conta, mostrar seus lançamentos, saldos, gráficos e relatórios, sincronizar entre seus aparelhos e enviar os lembretes de vencimento e orçamento que você ativou. Não há venda de dados, perfilagem nem uso para publicidade.</p>
+
+  <h2>5. Com quem os dados passam</h2>
+  <p>Para existir, o GRANA usa prestadores que processam dados em nosso nome, somente para essa finalidade:</p>
+  <ul>
+    <li><strong>Supabase</strong> — autenticação e banco de dados. Cada pessoa só enxerga as próprias linhas (isolamento por usuário no banco).</li>
+    <li><strong>Vercel</strong> — hospedagem do site e das rotinas que enviam os lembretes por notificação.</li>
+    <li><strong>Serviços de notificação do sistema</strong> (Apple, Google, Mozilla), apenas para entregar um aviso ao seu aparelho quando você ativa os lembretes no navegador.</li>
+  </ul>
+  <p>Esses serviços podem manter servidores fora do Brasil; o tratamento segue as garantias exigidas pela LGPD. Os dados trafegam sempre por conexão segura (HTTPS).</p>
+
+  <h2>6. Por quanto tempo os dados ficam</h2>
+  <p>Enquanto a sua conta existir. Ao usar <strong>Ajustes → Excluir minha conta</strong>, a conta e todos os dados ligados a ela são apagados em definitivo e na hora, e isso não pode ser desfeito. Cópias de segurança mantidas pelo provedor do banco de dados podem permanecer por um período limitado até serem substituídas.</p>
+
+  <h2>7. Seus direitos</h2>
+  <p>Você pode, a qualquer momento: confirmar que tratamos seus dados e acessá-los (tudo está visível no próprio app e o relatório do mês pode ser exportado em PDF); corrigir dados editando-os no app; apagar tudo pela exclusão da conta; revogar permissões como as de notificação nos ajustes do seu aparelho; e pedir informações sobre o tratamento pelo contato abaixo.</p>
+
+  <h2>8. Crianças e adolescentes</h2>
+  <p>O GRANA não é voltado a crianças. Menores de 18 anos devem usá-lo com o conhecimento e a supervisão de um responsável.</p>
+
+  <h2>9. Contato e mudanças</h2>
+  <p>Dúvidas, pedidos ou problemas de privacidade: abra um chamado em <a href="https://github.com/Kaueafonsoo/Kafon-s-Life/issues" rel="noopener">github.com/Kaueafonsoo/Kafon-s-Life/issues</a> (não coloque dados pessoais ou financeiros no chamado). Se esta política mudar de forma relevante, a data no topo será atualizada e o aviso aparecerá no app.</p>
+
+  <a class="voltar" href="./">← Voltar para o GRANA</a>
+</main>
+</body>
+</html>

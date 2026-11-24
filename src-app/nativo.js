@@ -109,7 +109,6 @@ if (Capacitor.isNativePlatform()) {
   const LEMBRETES_KEY = 'grana_lembretes_nativo';
   const ID_LEMBRETE = 2100;          // 2100 a 2106: um por noite, nos próximos 7 dias
   const DIAS_AGENDADOS = 7;
-  const ID_TESTE = 2199;
 
   const idsLembretes = () => Array.from({ length: DIAS_AGENDADOS }, (_, i) => ({ id: ID_LEMBRETE + i }));
 
@@ -150,7 +149,6 @@ if (Capacitor.isNativePlatform()) {
   window.atualizarLembretesUI = async function () {
     const row = document.getElementById('lembretes-row');
     const btn = document.getElementById('btn-lembretes-toggle');
-    const teste = document.getElementById('btn-lembretes-teste');
     const hint = document.getElementById('lembretes-hint');
     row.hidden = false;
     let permissao = 'prompt';
@@ -158,7 +156,6 @@ if (Capacitor.isNativePlatform()) {
     const ativo = localStorage.getItem(LEMBRETES_KEY) === '1' && permissao === 'granted';
     btn.disabled = false;
     btn.textContent = ativo ? 'Desativar lembretes' : 'Ativar lembretes';
-    teste.hidden = !ativo;
     hint.textContent = permissao === 'denied'
       ? 'As notificações estão bloqueadas para o GRANA. Libere nos Ajustes do celular → Notificações.'
       : 'Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
@@ -192,17 +189,6 @@ if (Capacitor.isNativePlatform()) {
   };
 
   window.removerInscricaoAoSair = cancelarLembretes;
-
-  window.enviarTesteLembrete = async function () {
-    try {
-      await LocalNotifications.schedule({
-        notifications: [{ id: ID_TESTE, title: 'GRANA', body: 'Teste: é assim que o lembrete das 21h vai aparecer.', schedule: { at: new Date(Date.now() + 3000) } }],
-      });
-      showToast('Teste enviado: a notificação chega em instantes.');
-    } catch (err) {
-      showToast('Não deu pra enviar o teste: ' + (err.message || 'tente de novo'));
-    }
-  };
 
   /* ---------- PDF: gera o arquivo e abre o "compartilhar" ---------- */
   const estiloPdf = document.createElement('style');

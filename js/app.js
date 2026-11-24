@@ -23,14 +23,11 @@ let state = {
   orcamentos: {},
   metas: [],
   desejos: [],
-  // Contas, cartões e pagamentos de fatura (js/contas.js). recursoContas fica false se o schema novo ainda não foi aplicado.
+  // Contas, cartões, pagamentos de fatura e transferências (js/contas.js).
   contas: [],
   cartoes: [],
   faturas: [],
   transferencias: [],
-  recursoContas: false,
-  recursoImport: false, // importar extrato precisa da coluna import_id (schema.sql) e de contas
-  recursoTransf: false, // a tabela de transferências pode faltar mesmo com contas funcionando (schema.sql ainda não rodou de novo)
 };
 
 const PRIORIDADE_ORDEM = { alta: 0, media: 1, baixa: 2 };
@@ -116,11 +113,6 @@ async function fetchAllData() {
   state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
 
   await carregarContas();
-
-  // Importar extrato precisa da coluna import_id; se o schema.sql ainda não rodou, só o botão de importar some.
-  const importRes = await supabaseClient.from('lancamentos').select('import_id').limit(1);
-  state.recursoImport = state.recursoContas && !importRes.error;
-  document.documentElement.classList.toggle('sem-import', !state.recursoImport);
 }
 
 /* ---------- Utilitários de formatação ---------- */
@@ -300,14 +292,10 @@ function initTemaToggle() {
 /* ---------- Contagem para o salário ---------- */
 
 /** Saldo em que o "quanto posso gastar" se baseia: o dinheiro do dia a dia (conta corrente, carteira, outras).
-    Poupança e investimentos ficam de fora, porque não são pra gastar. Sem contas cadastradas, usa o saldo do mês. */
+    Poupança e investimentos ficam de fora, porque não são pra gastar. */
 function saldoParaGastar() {
-  if (state.recursoContas) {
-    const doDiaADia = contasAtivas().filter(c => c.tipo !== 'poupanca' && c.tipo !== 'investimento');
-    return { valor: arredonda(doDiaADia.reduce((s, c) => s + saldoDaConta(c), 0)), rotulo: 'Saldo nas contas do dia a dia' };
-  }
-  const hoje = new Date();
-  return { valor: computeTotals(getLancamentosForMonth(hoje.getFullYear(), hoje.getMonth())).saldo, rotulo: 'Saldo do mês' };
+  const doDiaADia = contasAtivas().filter(c => c.tipo !== 'poupanca' && c.tipo !== 'investimento');
+  return { valor: arredonda(doDiaADia.reduce((s, c) => s + saldoDaConta(c), 0)), rotulo: 'Saldo nas contas do dia a dia' };
 }
 
 const STATUS_HOJE = {
@@ -1148,7 +1136,7 @@ function openLancamentoModal(id, opcoes = {}) {
   } else {
     document.getElementById('modal-lancamento-title').textContent = 'Novo lançamento';
     document.getElementById('lanc-id').value = '';
-    const iso = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(Math.min(new Date().getDate(), 28)).padStart(2, '0')}`;
+    const iso = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(diaPadraoDoMes(new Date().getDate(), currentYear, currentMonth)).padStart(2, '0')}`;
     document.getElementById('lanc-data').value = iso;
     document.getElementById('btn-excluir-lancamento').hidden = true;
     document.getElementById('lanc-repeticao-section').hidden = false;
@@ -1158,7 +1146,7 @@ function openLancamentoModal(id, opcoes = {}) {
     updateRepeticaoTipoUI();
     updateRepeticaoUI();
   }
-  if (state.recursoContas) prepararDestinoLancamento(id ? state.lancamentos.find(x => x.id === id) : null, opcoes.destino);
+  prepararDestinoLancamento(id ? state.lancamentos.find(x => x.id === id) : null, opcoes.destino);
   openModal('modal-lancamento');
 }
 
@@ -1249,20 +1237,23 @@ async function onSubmitLancamento(e) {
   const dataBase = document.getElementById('lanc-data').value;
   const descricaoBase = document.getElementById('lanc-descricao').value.trim();
   const valorBase = parseFloat(document.getElementById('lanc-valor').value) || 0;
+  if (valorBase < 0.01) { showToast('Informe um valor de pelo menos R$ 0,01.'); return; }
   // Conta ou cartão onde o lançamento acontece. Compra no cartão não tem forma/status pra escolher.
-  const destino = state.recursoContas ? lerDestinoLancamento() : { contaId: null, cartaoId: null, cartao: null };
+  const destino = lerDestinoLancamento();
   const payloadBase = {
     tipo: document.getElementById('lanc-tipo').value,
     categoria: document.getElementById('lanc-categoria').value,
     forma_pagamento: destino.cartao ? `Crédito ${destino.cartao.nome}` : document.getElementById('lanc-forma').value,
     status: destino.cartao ? 'pago' : document.getElementById('lanc-status').value,
   };
-  if (state.recursoContas) {
-    payloadBase.conta_id = destino.contaId;
-    payloadBase.cartao_id = destino.cartaoId;
-  }
+  payloadBase.conta_id = destino.contaId;
+  payloadBase.cartao_id = destino.cartaoId;
   const modoRepeticao = id ? 'nenhuma' : document.getElementById('lanc-repeticao').value;
   const qtd = Math.max(1, parseInt(document.getElementById('lanc-repeticao-qtd').value, 10) || 1);
+  if (modoRepeticao === 'parcelado' && qtd > 1 && valorBase / qtd < 0.01) {
+    showToast('Esse valor é pequeno demais para dividir em tantas parcelas.');
+    return;
+  }
 
   const pctAntes = payloadBase.tipo === 'despesa' ? pctOrcamento(payloadBase.categoria, dataBase) : 0;
 
@@ -1270,13 +1261,11 @@ async function onSubmitLancamento(e) {
   try {
     if (id) {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
-      if (state.recursoContas) {
-        // Só recalcula a fatura se mudou o cartão ou a data; editar descrição ou valor não tira a compra da fatura em que caiu
-        // (e uma parcela editada não "pula" de fatura sem querer).
-        const antes = state.lancamentos.find(x => x.id === id);
-        const mudou = !antes || antes.cartaoId !== destino.cartaoId || antes.data !== dataBase || !antes.faturaRef;
-        payload.fatura_ref = destino.cartao ? (mudou ? faturaDaCompra(dataBase, destino.cartao) : antes.faturaRef) : null;
-      }
+      // Só recalcula a fatura se mudou o cartão ou a data; editar descrição ou valor não tira a compra da fatura em que caiu
+      // (e uma parcela editada não "pula" de fatura sem querer).
+      const antes = state.lancamentos.find(x => x.id === id);
+      const mudou = !antes || antes.cartaoId !== destino.cartaoId || antes.data !== dataBase || !antes.faturaRef;
+      payload.fatura_ref = destino.cartao ? (mudou ? faturaDaCompra(dataBase, destino.cartao) : antes.faturaRef) : null;
       const { data, error } = await supabaseClient.from('lancamentos').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const idx = state.lancamentos.findIndex(x => x.id === id);
@@ -1291,7 +1280,7 @@ async function onSubmitLancamento(e) {
           data: addMonthsToIso(dataBase, i),
           descricao: descricaoBase,
           valor: valorBase,
-          ...(state.recursoContas ? { fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null } : {}),
+          fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null,
         });
       }
       const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
@@ -1314,7 +1303,7 @@ async function onSubmitLancamento(e) {
           descricao: `${descricaoBase} (${i + 1}/${qtd})`,
           valor: valorParcela,
           // Cada parcela cai numa fatura seguinte: a 1ª pela regra do melhor dia de compra, as outras mês a mês depois dela.
-          ...(state.recursoContas ? { fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null } : {}),
+          fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null,
         });
       }
       const { data, error } = await supabaseClient.from('lancamentos').insert(rows).select();
@@ -1323,7 +1312,7 @@ async function onSubmitLancamento(e) {
       showToast(`Despesa parcelada em ${qtd}x`);
     } else {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
-      if (state.recursoContas) payload.fatura_ref = destino.cartao ? faturaDaCompra(dataBase, destino.cartao) : null;
+      payload.fatura_ref = destino.cartao ? faturaDaCompra(dataBase, destino.cartao) : null;
       const { data, error } = await supabaseClient
         .from('lancamentos')
         .insert({ ...payload, user_id: session.user.id })
@@ -1333,7 +1322,7 @@ async function onSubmitLancamento(e) {
       state.lancamentos.push(rowToLancamento(data));
       showToast('Lançamento adicionado');
     }
-    if (state.recursoContas) guardarUltimoDestino(destino);
+    guardarUltimoDestino(destino);
     closeModal('modal-lancamento');
     haptic();
     renderAll();
@@ -1596,8 +1585,8 @@ function renderDesejos() {
       <div class="wishlist-price">${formatCurrency(desejo.preco)}</div>
       <div class="wishlist-footer">
         <span class="badge ${desejo.comprado ? 'badge-pago' : 'badge-pendente'}">${desejo.comprado ? 'Comprado' : 'Na lista'}</span>
-        ${desejo.link ? `
-          <a class="wishlist-link" href="${escapeHtml(desejo.link)}" target="_blank" rel="noopener noreferrer">
+        ${ehLinkWeb(desejo.link) ? `
+          <a class="wishlist-link" href="${escapeHtml(desejo.link.trim())}" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
             Ver item
           </a>` : '<span></span>'}
@@ -1656,6 +1645,11 @@ async function onSubmitDesejo(e) {
     link: document.getElementById('desejo-link').value.trim(),
     comprado: document.getElementById('desejo-comprado').checked,
   };
+  // Só links web: um "javascript:..." ou "data:..." colado aqui viraria um link perigoso na lista.
+  if (payload.link && !ehLinkWeb(payload.link)) {
+    showToast('O link precisa começar com http:// ou https://');
+    return;
+  }
 
   btn.disabled = true;
   try {
@@ -1721,8 +1715,12 @@ function parseLinhas(texto) {
 async function onSubmitAjustes(e) {
   e.preventDefault();
 
-  const categorias = parseLinhas(document.getElementById('cfg-categorias').value);
-  const formas = parseLinhas(document.getElementById('cfg-formas').value);
+  // Repetidas (ignorando maiúsculas e acentos, "Saúde" = "saude") saem; fica a primeira.
+  const categoriasDigitadas = parseLinhas(document.getElementById('cfg-categorias').value);
+  const formasDigitadas = parseLinhas(document.getElementById('cfg-formas').value);
+  const categorias = removerRepetidas(categoriasDigitadas);
+  const formas = removerRepetidas(formasDigitadas);
+  const removidas = (categoriasDigitadas.length - categorias.length) + (formasDigitadas.length - formas.length);
 
   if (!categorias.length || !formas.length) {
     showToast('Categorias e formas de pagamento não podem ficar vazias');
@@ -1757,7 +1755,7 @@ async function onSubmitAjustes(e) {
     closeModal('modal-ajustes');
     haptic();
     renderAll();
-    showToast('Ajustes salvos');
+    showToast(removidas ? `Ajustes salvos. Tirei ${removidas} ${removidas === 1 ? 'item repetido' : 'itens repetidos'}.` : 'Ajustes salvos');
   } catch (err) {
     showToast('Erro ao salvar: ' + err.message);
   }
@@ -1871,14 +1869,15 @@ function urlBase64ParaBytes(b64) {
 
 async function inscricaoAtual() {
   if (!pushSuportado()) return null;
-  const reg = await navigator.serviceWorker.ready;
-  return reg.pushManager.getSubscription();
+  // serviceWorker.ready nunca responde se nenhum service worker foi registrado (modo privado, por exemplo). Sem o limite de
+  // tempo, isso travaria quem sai ou exclui a conta, que passam por aqui antes de continuar.
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 2000))]);
+  return reg ? reg.pushManager.getSubscription() : null;
 }
 
 async function atualizarLembretesUI() {
   const row = document.getElementById('lembretes-row');
   const btn = document.getElementById('btn-lembretes-toggle');
-  const teste = document.getElementById('btn-lembretes-teste');
   const hint = document.getElementById('lembretes-hint');
 
   if (!pushSuportado()) {
@@ -1886,7 +1885,6 @@ async function atualizarLembretesUI() {
     row.hidden = !(ehIOS() && !appInstalado());
     if (!row.hidden) {
       btn.disabled = true;
-      teste.hidden = true;
       hint.textContent = 'No iPhone, os lembretes só funcionam com o GRANA instalado: no Safari, toque em Compartilhar → Adicionar à Tela de Início, e abra o app por lá.';
     }
     return;
@@ -1897,7 +1895,6 @@ async function atualizarLembretesUI() {
   const ativo = !!sub && Notification.permission === 'granted';
   btn.disabled = false;
   btn.textContent = ativo ? 'Desativar lembretes' : 'Ativar lembretes';
-  teste.hidden = !ativo;
   hint.textContent = Notification.permission === 'denied'
     ? 'As notificações estão bloqueadas para o GRANA neste aparelho. Libere em Ajustes do aparelho → Notificações.'
     : 'Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
@@ -1955,30 +1952,11 @@ async function removerInscricaoAoSair() {
   } catch (e) { /* sair da conta não pode travar por causa disso */ }
 }
 
-async function enviarTesteLembrete() {
-  const btn = document.getElementById('btn-lembretes-teste');
-  btn.disabled = true;
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    const resp = await fetch('/api/teste-push', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + data.session.access_token },
-    });
-    const corpo = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(corpo.erro || `erro ${resp.status}`);
-    showToast('Teste enviado — a notificação chega em instantes.');
-  } catch (err) {
-    showToast('Não deu pra enviar o teste: ' + err.message);
-  }
-  btn.disabled = false;
-}
-
 function initLembretes() {
   document.getElementById('btn-lembretes-toggle').addEventListener('click', async () => {
     if (await inscricaoAtual()) desativarLembretes();
     else ativarLembretes();
   });
-  document.getElementById('btn-lembretes-teste').addEventListener('click', enviarTesteLembrete);
 }
 
 function showLockScreen() {
@@ -2163,6 +2141,14 @@ function montarEImprimirRelatorio() {
 
 let realtimeChannel = null;
 
+let renderAgendado = null;
+/** Eventos de tempo real chegam em rajada (importar 200 linhas manda 200 avisos). Em vez de redesenhar a tela a cada um,
+    espera a rajada acabar e redesenha uma vez só. */
+function renderAllAgendado() {
+  clearTimeout(renderAgendado);
+  renderAgendado = setTimeout(() => { renderAgendado = null; renderAll(); }, 150);
+}
+
 function iniciarRealtime() {
   if (realtimeChannel) return;
   const uid = session.user.id;
@@ -2174,17 +2160,19 @@ function iniciarRealtime() {
       if (payload.eventType === 'DELETE') {
         state.lancamentos = state.lancamentos.filter(x => x.id !== payload.old.id);
       } else if (payload.eventType === 'INSERT') {
-        if (!state.lancamentos.some(x => x.id === payload.new.id)) state.lancamentos.push(rowToLancamento(payload.new));
+        // Já está na tela: foi este aparelho que criou (ex.: importou agora). Nada a fazer.
+        if (state.lancamentos.some(x => x.id === payload.new.id)) return;
+        state.lancamentos.push(rowToLancamento(payload.new));
       } else {
         const idx = state.lancamentos.findIndex(x => x.id === payload.new.id);
         if (idx >= 0) state.lancamentos[idx] = rowToLancamento(payload.new);
       }
-      renderAll();
+      renderAllAgendado();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orcamentos', filter: filtro }, (payload) => {
       if (payload.eventType === 'DELETE') delete state.orcamentos[payload.old.categoria];
       else state.orcamentos[payload.new.categoria] = Number(payload.new.valor_planejado);
-      renderAll();
+      renderAllAgendado();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'metas', filter: filtro }, (payload) => {
       if (payload.eventType === 'DELETE') {
@@ -2217,11 +2205,10 @@ function iniciarRealtime() {
       aplicarTema(state.config.tema);
       localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
       populateCategoriaSelects();
-      renderAll();
+      renderAllAgendado();
     });
 
-  // Só assina as tabelas novas se elas existem: assinar uma tabela inexistente derrubaria o tempo real de tudo.
-  if (state.recursoContas) canal = adicionarRealtimeContas(canal, filtro);
+  canal = adicionarRealtimeContas(canal, filtro);
   realtimeChannel = canal.subscribe();
 }
 
@@ -2242,6 +2229,14 @@ function hideAuthScreen() {
   document.getElementById('app').hidden = false;
 }
 
+/** Endereço do site publicado. O link do e-mail de recuperação precisa voltar para um endereço http(s) fixo e permitido no
+    Supabase (Authentication → URL Configuration), inclusive quando o pedido sai do app Android/iPhone. */
+const URL_DO_SITE = 'https://kafon-s-life.vercel.app';
+
+/** Verdadeiro enquanto a pessoa veio do link "redefinir senha" e ainda não escolheu a senha nova: nesse intervalo o Supabase
+    já criou uma sessão, mas ela não pode entrar no app antes de a senha ser trocada. */
+let recuperandoSenha = false;
+
 function setAuthMode(mode) {
   authMode = mode;
   document.getElementById('auth-title').textContent = mode === 'entrar' ? 'Entrar' : 'Criar conta';
@@ -2249,6 +2244,26 @@ function setAuthMode(mode) {
   document.getElementById('auth-toggle-entrar').classList.toggle('is-active', mode === 'entrar');
   document.getElementById('auth-toggle-cadastro').classList.toggle('is-active', mode === 'cadastrar');
   document.getElementById('auth-message').hidden = true;
+  document.getElementById('auth-esqueci').hidden = mode !== 'entrar';
+}
+
+/** Escolhe qual das telas do login aparece: 'entrar' | 'cadastrar' | 'recuperar' | 'novasenha'. */
+function mostrarTelaAuth(tela) {
+  const entrando = tela === 'entrar' || tela === 'cadastrar';
+  document.querySelector('.auth-tabs').hidden = !entrando;
+  document.getElementById('form-auth').hidden = !entrando;
+  document.getElementById('form-recuperar').hidden = tela !== 'recuperar';
+  document.getElementById('form-nova-senha').hidden = tela !== 'novasenha';
+  ['recuperar-message', 'nova-senha-message'].forEach(id => { document.getElementById(id).hidden = true; });
+  if (entrando) setAuthMode(tela);
+  else document.getElementById('auth-title').textContent = tela === 'recuperar' ? 'Recuperar senha' : 'Definir nova senha';
+}
+
+function mostrarMensagemAuth(id, texto, ok = false) {
+  const el = document.getElementById(id);
+  el.textContent = texto;
+  el.classList.toggle('auth-message-ok', ok);
+  el.hidden = false;
 }
 
 function traduzErroAuth(msg) {
@@ -2258,6 +2273,9 @@ function traduzErroAuth(msg) {
   if (/unable to validate email/i.test(msg)) return 'E-mail inválido.';
   if (/email not confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar — verifique sua caixa de entrada.';
   if (/failed to fetch/i.test(msg)) return 'Sem conexão com o servidor. Verifique sua internet.';
+  if (/rate limit|only request this after|too many/i.test(msg)) return 'Muitas tentativas. Espere um minuto e tente de novo.';
+  if (/same password|different from the old/i.test(msg)) return 'A senha nova precisa ser diferente da atual.';
+  if (/auth session missing|session.*(expired|missing)/i.test(msg)) return 'O link expirou. Peça um novo em "Esqueci minha senha".';
   return msg;
 }
 
@@ -2291,14 +2309,127 @@ async function onSubmitAuth(e) {
   btn.disabled = false;
 }
 
+/** Pede o e-mail com o link para redefinir a senha. A resposta é a mesma exista ou não a conta, pra ninguém descobrir
+    quais e-mails estão cadastrados. */
+async function onSubmitRecuperar(e) {
+  e.preventDefault();
+  const email = document.getElementById('recuperar-email').value.trim();
+  const btn = document.getElementById('recuperar-submit');
+  btn.disabled = true;
+  document.getElementById('recuperar-message').hidden = true;
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: URL_DO_SITE + '/' });
+    if (error) throw error;
+    mostrarMensagemAuth('recuperar-message', 'Se existe uma conta com esse e-mail, enviamos o link para criar uma senha nova. Confira também a caixa de spam.', true);
+  } catch (err) {
+    mostrarMensagemAuth('recuperar-message', traduzErroAuth(err.message));
+  }
+  btn.disabled = false;
+}
+
+/** Salva a senha nova (tela aberta pelo link do e-mail) e então deixa a pessoa entrar no app. */
+async function onSubmitNovaSenha(e) {
+  e.preventDefault();
+  const senha = document.getElementById('nova-senha').value;
+  const confirma = document.getElementById('nova-senha-confirma').value;
+  const btn = document.getElementById('nova-senha-submit');
+  document.getElementById('nova-senha-message').hidden = true;
+  if (senha !== confirma) { mostrarMensagemAuth('nova-senha-message', 'As duas senhas não são iguais.'); return; }
+  btn.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password: senha });
+    if (error) throw error;
+    recuperandoSenha = false;
+    document.getElementById('form-nova-senha').reset();
+    try { history.replaceState(null, '', location.pathname); } catch (err) { /* limpar o endereço é só capricho */ }
+    mostrarTelaAuth('entrar');
+    showToast('Senha alterada. Você já está dentro.');
+    if (session) onSessionReady();
+  } catch (err) {
+    mostrarMensagemAuth('nova-senha-message', traduzErroAuth(err.message));
+  }
+  btn.disabled = false;
+}
+
 function initAuthScreen() {
-  document.getElementById('auth-toggle-entrar').addEventListener('click', () => setAuthMode('entrar'));
-  document.getElementById('auth-toggle-cadastro').addEventListener('click', () => setAuthMode('cadastrar'));
+  document.getElementById('auth-toggle-entrar').addEventListener('click', () => mostrarTelaAuth('entrar'));
+  document.getElementById('auth-toggle-cadastro').addEventListener('click', () => mostrarTelaAuth('cadastrar'));
   document.getElementById('form-auth').addEventListener('submit', onSubmitAuth);
+  document.getElementById('auth-esqueci').addEventListener('click', () => {
+    document.getElementById('recuperar-email').value = document.getElementById('auth-email').value;
+    mostrarTelaAuth('recuperar');
+  });
+  document.getElementById('recuperar-voltar').addEventListener('click', () => mostrarTelaAuth('entrar'));
+  document.getElementById('form-recuperar').addEventListener('submit', onSubmitRecuperar);
+  document.getElementById('form-nova-senha').addEventListener('submit', onSubmitNovaSenha);
   document.querySelectorAll('.btn-sair').forEach(b => b.addEventListener('click', async () => {
     await removerInscricaoAoSair();
     await supabaseClient.auth.signOut();
   }));
+}
+
+/* ---------- Sair e excluir a conta ---------- */
+
+/** Apaga o que o aparelho guardou depois que alguém sai da conta: os caches do app (que não devem guardar dados de
+    ninguém) e as preferências de "último destino". Na exclusão da conta apaga também todas as outras preferências do app. */
+async function limparRastrosLocais(tudo = false) {
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('grana_ultimo_destino') || (tudo && k.startsWith('grana_'))).forEach(k => localStorage.removeItem(k));
+  } catch (e) { /* localStorage pode estar bloqueado */ }
+  try {
+    if (window.caches) for (const nome of await caches.keys()) await caches.delete(nome);
+  } catch (e) { /* sem acesso ao cache: nada a limpar */ }
+}
+
+function abrirExcluirConta() {
+  document.getElementById('form-excluir-usuario').reset();
+  document.getElementById('excluir-erro').hidden = true;
+  document.getElementById('btn-confirmar-excluir-usuario').disabled = true;
+  closeModal('modal-ajustes');
+  openModal('modal-excluir-usuario');
+}
+
+async function excluirMinhaConta(e) {
+  e.preventDefault();
+  if (document.getElementById('excluir-confirma').value.trim().toUpperCase() !== 'EXCLUIR') return;
+  const btn = document.getElementById('btn-confirmar-excluir-usuario');
+  const erroEl = document.getElementById('excluir-erro');
+  btn.disabled = true;
+  btn.textContent = 'Excluindo…';
+  erroEl.hidden = true;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session && data.session.access_token;
+    if (!token) throw new Error('Sua sessão expirou. Entre de novo e tente outra vez.');
+    // Dentro do app Android/iPhone a página não é servida pelo site, então o endereço precisa ser o completo.
+    const base = document.documentElement.classList.contains('app-nativo') ? URL_DO_SITE : '';
+    const resp = await fetch(base + '/api/excluir-conta', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmar: true }),
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(corpo.erro || `erro ${resp.status}`);
+
+    await removerInscricaoAoSair();
+    await limparRastrosLocais(true);
+    closeModal('modal-excluir-usuario');
+    await supabaseClient.auth.signOut({ scope: 'local' });
+    showToast('Conta excluída. Todos os seus dados foram apagados.', 7000);
+  } catch (err) {
+    erroEl.textContent = traduzErroAuth(err.message) || 'Não foi possível excluir agora. Tente de novo.';
+    erroEl.hidden = false;
+    btn.disabled = false;
+  }
+  btn.textContent = 'Excluir tudo';
+}
+
+function initExcluirConta() {
+  document.getElementById('btn-excluir-usuario').addEventListener('click', abrirExcluirConta);
+  document.getElementById('excluir-confirma').addEventListener('input', (e) => {
+    document.getElementById('btn-confirmar-excluir-usuario').disabled = e.target.value.trim().toUpperCase() !== 'EXCLUIR';
+  });
+  document.getElementById('form-excluir-usuario').addEventListener('submit', excluirMinhaConta);
 }
 
 /* ---------- Render geral ---------- */
@@ -2368,6 +2499,28 @@ function showConfigError(msg) {
   document.querySelector('.auth-tabs').hidden = true;
 }
 
+/** Reage a entrar, sair e ao link de "redefinir senha". */
+function aoMudarEstadoAuth(event, newSession) {
+  session = newSession;
+  if (event === 'PASSWORD_RECOVERY') {
+    // Link do e-mail aberto: antes de entrar no app, a pessoa define a senha nova.
+    recuperandoSenha = true;
+    showAuthScreen();
+    mostrarTelaAuth('novasenha');
+    return;
+  }
+  if (recuperandoSenha && session) return; // sessão criada pelo link: só entra depois de trocar a senha
+  if (session) {
+    onSessionReady();
+  } else {
+    const estavaLogado = appStarted;
+    appStarted = false;
+    pararRealtime();
+    showAuthScreen();
+    if (estavaLogado) limparRastrosLocais(); // saiu da conta: o aparelho não guarda nada dela
+  }
+}
+
 function init() {
   // Aplica o último tema conhecido (guardado localmente) antes de qualquer coisa,
   // pra não piscar em claro e só depois trocar pra escuro quando os dados da
@@ -2391,6 +2544,7 @@ function init() {
   initMetasTab();
   initDesejosTab();
   initAjustes();
+  initExcluirConta();
   initModals();
   initConfirmModal();
   initFaceIdSetting();
@@ -2401,6 +2555,12 @@ function init() {
   document.getElementById('btn-privacidade').addEventListener('click', togglePrivacidade);
   document.getElementById('btn-exportar-pdf').addEventListener('click', gerarRelatorioPDF);
 
+  // Quem abre o link do e-mail chega com "type=recovery" no endereço. A sessão que o Supabase cria por causa dele
+  // costuma ser anunciada antes do evento de recuperação, então marcamos já aqui pra ela não entrar direto no app.
+  const dadosDoLink = location.hash + location.search;
+  if (/type=recovery/.test(dadosDoLink)) recuperandoSenha = true;
+  const linkExpirado = /error_code=otp_expired|error_description=.*(expired|invalid)/i.test(dadosDoLink);
+
   try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (err) {
@@ -2408,16 +2568,13 @@ function init() {
     return;
   }
 
-  supabaseClient.auth.onAuthStateChange((event, newSession) => {
-    session = newSession;
-    if (session) {
-      onSessionReady();
-    } else {
-      appStarted = false;
-      pararRealtime();
-      showAuthScreen();
-    }
-  });
+  supabaseClient.auth.onAuthStateChange(aoMudarEstadoAuth);
+
+  if (linkExpirado) {
+    mostrarTelaAuth('entrar');
+    mostrarMensagemAuth('auth-message', 'Esse link expirou ou já foi usado. Toque em "Esqueci minha senha" para receber um novo.');
+    try { history.replaceState(null, '', location.pathname); } catch (err) { /* só capricho */ }
+  }
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

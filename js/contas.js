@@ -8,8 +8,6 @@
      Assim ele nunca fica desatualizado em relação aos lançamentos.
    - Compra no cartão não mexe em nenhuma conta. Só o PAGAMENTO da fatura tira dinheiro da conta, e esse
      pagamento fica na tabela "faturas" (não em "lancamentos"), pra despesa não contar duas vezes.
-   - Se as tabelas novas ainda não existem no Supabase, state.recursoContas fica false e toda esta parte
-     some da tela: o app continua funcionando como antes.
    =================================================================== */
 
 const TIPOS_CONTA = {
@@ -78,45 +76,28 @@ function rowToTransferencia(r) {
 
 /* ---------- Carregar do Supabase ---------- */
 
-/** Busca contas, cartões e pagamentos de fatura. Se as tabelas ainda não existem (schema.sql não rodou),
-    desliga o recurso em vez de quebrar o app inteiro. */
+/** Busca contas, cartões, pagamentos de fatura e transferências. Qualquer falha aqui derruba o carregamento inteiro
+    (a tela de "Tentar novamente" aparece), em vez de seguir com dados pela metade. */
 async function carregarContas() {
-  const [contaRes, cartaoRes, faturaRes] = await Promise.all([
+  const [contaRes, cartaoRes, faturaRes, transfRes] = await Promise.all([
     supabaseClient.from('contas').select('*').order('created_at', { ascending: true }),
     supabaseClient.from('cartoes').select('*').order('created_at', { ascending: true }),
     supabaseClient.from('faturas').select('*'),
+    supabaseClient.from('transferencias').select('*').order('data', { ascending: false }),
   ]);
-  const erro = contaRes.error || cartaoRes.error || faturaRes.error;
-  if (erro) {
-    console.warn('Contas e cartões indisponíveis (rode supabase/schema.sql):', erro.message);
-    state.recursoContas = false;
-    state.contas = []; state.cartoes = []; state.faturas = [];
-  } else {
-    state.recursoContas = true;
-    state.contas = (contaRes.data || []).map(rowToConta);
-    state.cartoes = (cartaoRes.data || []).map(rowToCartao);
-    state.faturas = (faturaRes.data || []).map(rowToFatura);
+  for (const res of [contaRes, cartaoRes, faturaRes, transfRes]) {
+    if (res.error) throw res.error;
   }
-  document.documentElement.classList.toggle('sem-contas', !state.recursoContas);
-
-  // Transferências são opcionais: se a tabela ainda não existe, só o botão "Transferir" some.
-  state.transferencias = []; state.recursoTransf = false;
-  if (state.recursoContas) {
-    const transfRes = await supabaseClient.from('transferencias').select('*').order('data', { ascending: false });
-    if (!transfRes.error) {
-      state.recursoTransf = true;
-      state.transferencias = (transfRes.data || []).map(rowToTransferencia);
-    } else {
-      console.warn('Transferências indisponíveis (rode supabase/schema.sql):', transfRes.error.message);
-    }
-  }
-  document.documentElement.classList.toggle('sem-transf', !state.recursoTransf);
+  state.contas = (contaRes.data || []).map(rowToConta);
+  state.cartoes = (cartaoRes.data || []).map(rowToCartao);
+  state.faturas = (faturaRes.data || []).map(rowToFatura);
+  state.transferencias = (transfRes.data || []).map(rowToTransferencia);
 }
 
 /** Todo usuário precisa de ao menos uma conta pra ligar os lançamentos. O índice único (usuário + nome) impede
     duplicata se dois aparelhos abrirem ao mesmo tempo pela primeira vez. */
 async function garantirContaPadrao() {
-  if (!state.recursoContas || state.contas.length) return;
+  if (state.contas.length) return;
   const { data, error } = await supabaseClient
     .from('contas')
     .insert({ user_id: session.user.id, nome: 'Conta principal', tipo: 'corrente', saldo_inicial: 0 })
@@ -211,7 +192,6 @@ const ROTULO_STATUS = { paga: 'Paga', aberta: 'Aberta', fechada: 'Fechada', venc
 
 /** Texto da coluna "Pagamento" na lista de lançamentos. */
 function rotuloPagamento(l) {
-  if (!state.recursoContas) return l.formaPagamento;
   const cartao = l.cartaoId && cartaoPorId(l.cartaoId);
   if (cartao) return `Cartão ${cartao.nome}`;
   const conta = l.contaId && contaPorId(l.contaId);
@@ -341,7 +321,6 @@ function guardarUltimoDestino(destino) {
 /* ---------- Aba Contas ---------- */
 
 function renderContasTudo() {
-  if (!state.recursoContas) return;
   popularFiltroConta();
   renderContasTab();
   renderTransferencias();
@@ -430,7 +409,6 @@ let editandoTransfId = null;
 
 function renderTransferencias() {
   const bloco = $id('transferencias-bloco');
-  if (!state.recursoTransf) return;
   const lista = [...state.transferencias].sort((a, b) => b.data.localeCompare(a.data));
   bloco.hidden = !lista.length;
   if (!lista.length) return;
@@ -461,7 +439,6 @@ function popularSelectsTransferencia(origemSel, destinoSel) {
 }
 
 function abrirTransferenciaModal(id) {
-  if (!state.recursoTransf) return;
   const t = id ? state.transferencias.find(x => x.id === id) : null;
   if (!t && contasAtivas().length < 2) { showToast('Para transferir, crie pelo menos duas contas.'); return; }
   editandoTransfId = t ? t.id : null;
@@ -992,20 +969,20 @@ function adicionarRealtimeContas(canal, filtro) {
   canal = canal
     .on('postgres_changes', { event: '*', schema: 'public', table: 'contas', filter: filtro }, (p) => {
       state.contas = atualizarLista(state.contas, p, rowToConta);
-      renderAll();
+      renderAllAgendado();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cartoes', filter: filtro }, (p) => {
       state.cartoes = atualizarLista(state.cartoes, p, rowToCartao);
-      renderAll();
+      renderAllAgendado();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'faturas', filter: filtro }, (p) => {
       state.faturas = atualizarLista(state.faturas, p, rowToFatura);
-      renderAll();
+      renderAllAgendado();
     });
-  return state.recursoTransf ? canal.on('postgres_changes', { event: '*', schema: 'public', table: 'transferencias', filter: filtro }, (p) => {
+  return canal.on('postgres_changes', { event: '*', schema: 'public', table: 'transferencias', filter: filtro }, (p) => {
     state.transferencias = atualizarLista(state.transferencias, p, rowToTransferencia);
-    renderAll();
-  }) : canal;
+    renderAllAgendado();
+  });
 }
 
 /* ---------- Ligações dos botões ---------- */

@@ -25,7 +25,7 @@ async function dadosDoUsuario(supabase, userId, hoje) {
 
   // Faturas: só as compras de cartão de faturas recentes (a mais antiga que ainda pode estar em aberto) em diante.
   const refMinima = somaDias(hoje, -75).slice(0, 7);
-  let [lancouRes, contasRes, comprasCartaoRes, cartoesRes, faturasRes, mesRes, orcRes, cfgRes] = await Promise.all([
+  const [lancouRes, contasRes, comprasCartaoRes, cartoesRes, faturasRes, mesRes, orcRes, cfgRes] = await Promise.all([
     supabase.from('lancamentos').select('id').eq('user_id', userId)
       .or(`data.eq.${hoje},created_at.gte.${hoje}T00:00:00-03:00`).limit(1),
     // contas pendentes: de 30 dias atrás até 3 dias à frente (o que o aviso precisa enxergar)
@@ -42,6 +42,11 @@ async function dadosDoUsuario(supabase, userId, hoje) {
     supabase.from('config').select('privacidade').eq('user_id', userId).maybeSingle(),
   ]);
 
+  // Qualquer consulta que falhe aborta este usuário (o erro vai pro log e conta como falha), em vez de mandar aviso incompleto.
+  for (const r of [lancouRes, contasRes, comprasCartaoRes, cartoesRes, faturasRes, mesRes, orcRes, cfgRes]) {
+    if (r.error) throw new Error(r.error.message);
+  }
+
   const gasto = {};
   (mesRes.data || []).forEach(l => { gasto[l.categoria] = (gasto[l.categoria] || 0) + Number(l.valor); });
   const orcamento = (orcRes.data || [])
@@ -51,18 +56,10 @@ async function dadosDoUsuario(supabase, userId, hoje) {
     .map(o => ({ ...o, estourou: o.pct > 100 }))
     .sort((a, b) => b.pct - a.pct);
 
-  // Banco sem as colunas de cartão (schema antigo): refaz a consulta de contas pendentes sem elas, pra não perder o aviso.
-  if (contasRes.error) {
-    contasRes = await supabase.from('lancamentos').select('id, descricao, data, valor, tipo, status').eq('user_id', userId)
-      .eq('tipo', 'despesa').eq('status', 'pendente')
-      .gte('data', somaDias(hoje, -30)).lte('data', somaDias(hoje, 3)).order('data');
-  }
-  // Sem as tabelas de cartão (schema antigo), as consultas de fatura dão erro: segue só com as contas pendentes.
-  const cartaoOk = !comprasCartaoRes.error && !cartoesRes.error && !faturasRes.error;
   const itens = itensAPagar({
-    lancamentos: [...(contasRes.data || []), ...(cartaoOk ? comprasCartaoRes.data || [] : [])],
-    cartoes: cartaoOk ? cartoesRes.data : [],
-    faturas: cartaoOk ? faturasRes.data : [],
+    lancamentos: [...(contasRes.data || []), ...(comprasCartaoRes.data || [])],
+    cartoes: cartoesRes.data,
+    faturas: faturasRes.data,
   });
 
   return {

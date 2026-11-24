@@ -39,7 +39,6 @@ function popularDestinoImportar(preferido) {
 }
 
 function abrirImportar(destinoInicial) {
-  if (!state.recursoImport) return;
   if (!contasAtivas().length) { showToast('Crie uma conta antes de importar.'); return; }
   importarTexto = null; importarLinhas = []; importarMapaCsv = null;
   $id('importar-arquivo').value = '';

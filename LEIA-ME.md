@@ -1,16 +1,16 @@
 # GRANA — Finanças
 
-App de controle financeiro pessoal para iPhone e Mac. Hospedado em `https://kafon-s-life.vercel.app`, com HTTPS de verdade e dados sincronizados na nuvem via Supabase — funciona de qualquer lugar com internet, sem depender do Mac ligado.
+App de controle financeiro pessoal para celular (Android e iPhone) e computador. Hospedado em `https://kafon-s-life.vercel.app`, com HTTPS de verdade e dados sincronizados na nuvem via Supabase — funciona de qualquer lugar com internet, sem depender de nenhum computador ligado. Também existe como app nativo para Android e iPhone (veja `APP-NATIVO.md`).
 
 ## Como usar
 
-Abra `https://kafon-s-life.vercel.app` no Safari (iPhone) ou em qualquer navegador (Mac), crie sua conta (e-mail e senha) e comece a lançar. Para instalar como app no iPhone: **Compartilhar → Adicionar à Tela de Início**.
+Abra `https://kafon-s-life.vercel.app` no navegador do celular (Safari no iPhone, Chrome no Android) ou do computador, crie sua conta (e-mail e senha) e comece a lançar. Para instalar como app: no iPhone, **Compartilhar → Adicionar à Tela de Início**; no Android, menu do Chrome → **Instalar app**.
 
-Os dados ficam no Supabase, protegidos por login — cada conta só enxerga os próprios lançamentos (Row Level Security). Toda alteração sincroniza **em tempo real** entre os aparelhos logados na mesma conta: edite no Mac e o iPhone atualiza sozinho, sem precisar recarregar.
+Os dados ficam no Supabase, protegidos por login — cada conta só enxerga os próprios lançamentos (Row Level Security). Toda alteração sincroniza **em tempo real** entre os aparelhos logados na mesma conta: edite no computador e o celular atualiza sozinho, sem precisar recarregar.
 
 ## Comece pelos Ajustes
 
-Abra **Ajustes** (na barra lateral no Mac, no rodapé da tela no iPhone) e preencha:
+Abra **Ajustes** (na barra lateral no computador, no rodapé da tela no celular) e preencha:
 
 - **Seu nome** — aparece na saudação do topo, que muda conforme a hora do dia.
 - **Dia do salário** — o Resumo passa a mostrar quantos dias faltam e quanto sobra por dia até lá. Deixe vazio para esconder esse cartão.
@@ -45,7 +45,7 @@ Aba **Contas** (e a tela da fatura, aberta ao tocar num cartão).
 - **Lançamentos antigos no crédito:** ao criar um cartão, o app oferece trazer as despesas que você já lançou com uma forma de pagamento como "Crédito Nubank" e as coloca nas faturas certas.
 - Contas e cartões com histórico não podem ser apagados: são **arquivados** (somem das listas, o histórico fica) e podem ser reativados.
 
-**Antes de publicar esta versão no site:** rode o `supabase/schema.sql` inteiro no SQL Editor do Supabase. Ele só **adiciona** (tabelas `contas`, `cartoes`, `faturas` e três colunas em `lancamentos`), não apaga nada, e pode ser rodado várias vezes. Quem já tem lançamentos ganha uma "Conta principal" e os lançamentos antigos (menos os pagos no crédito) passam a apontar para ela. Se o site subir **antes** do SQL, nada quebra: sem as tabelas novas, a parte de contas fica escondida e o app funciona como antes.
+**Antes de publicar esta versão no site:** rode o `supabase/schema.sql` inteiro no SQL Editor do Supabase. Ele só **adiciona** (tabelas `contas`, `cartoes`, `faturas` e três colunas em `lancamentos`), não apaga nada, e pode ser rodado várias vezes. Quem já tem lançamentos ganha uma "Conta principal" e os lançamentos antigos (menos os pagos no crédito) passam a apontar para ela. O app **exige** o schema completo: se o site subir antes do SQL, a tela mostra "Não deu pra carregar seus dados" com o botão de tentar de novo, até o SQL ser rodado. Por isso, rode o SQL **primeiro** e só depois publique.
 
 ## Transferência entre contas
 
@@ -73,7 +73,14 @@ Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fa
 - **No Resumo:** o card **Contas a vencer** mostra o que está atrasado, vence hoje ou nos próximos 3 dias (inclusive a fatura do cartão), com "Marcar paga" ou "Ver fatura" ali mesmo.
 - **Notificação das 21h:** avisa **3 dias e 1 dia antes** do vencimento, no dia e quando atrasa, para contas pendentes e faturas de cartão em aberto (só nesses marcos, para o mesmo vencimento não virar aviso todo dia). Só envia se houver algo a dizer; com o modo privacidade ligado o texto não mostra nomes. No site vem do servidor (`api/lembretes.js`); no app Android/iPhone os próximos 7 dias já ficam agendados no aparelho (`api/_planejar.js`), então chegam mesmo sem abrir o app. As duas versões usam a mesma lógica (`js/vencimentos.js`, `api/_mensagem.js`).
 
-**Antes de publicar:** rode o `supabase/schema.sql` de novo (cria `transferencias` e a coluna `import_id`). Só adiciona; pode rodar várias vezes. Se o site subir antes, cada recurso novo simplesmente fica escondido.
+**Antes de publicar:** rode o `supabase/schema.sql` de novo (cria `transferencias` e a coluna `import_id`). Só adiciona; pode rodar várias vezes. Rode **antes** de publicar: o site não carrega sem as tabelas e colunas novas.
+
+## Conta, senha e privacidade
+
+- **Esqueci minha senha:** na tela de login, o link pede o e-mail e manda um link para criar uma senha nova. O link abre o GRANA direto na tela "Definir nova senha", e a pessoa só entra no app depois de salvar a senha nova. A resposta é a mesma exista ou não a conta (ninguém descobre quais e-mails estão cadastrados). Para funcionar, `https://kafon-s-life.vercel.app` precisa estar em **Supabase → Authentication → URL Configuration** (Site URL e Redirect URLs); o texto do e-mail se edita em **Authentication → Email Templates**.
+- **Excluir minha conta:** em **Ajustes → Seus dados**. Pede para digitar EXCLUIR e apaga a conta e **todos** os dados na hora, sem volta (`api/excluir-conta.js`, que usa a chave de serviço no servidor; as tabelas apagam em cascata). O app Android/iPhone chama o mesmo endereço do site.
+- **Política de Privacidade:** `privacidade.html` (publicada em `https://kafon-s-life.vercel.app/privacidade.html`), linkada no login e nos Ajustes. Ela cita o contato por chamado no GitHub; se quiser um e-mail de contato, edite a seção 9 do arquivo.
+- **Ao sair da conta**, o aparelho apaga os caches do app e as preferências de "último destino". O service worker nunca guarda respostas de outros endereços (como o Supabase), só os arquivos do próprio site.
 
 ## Confirmação antes de excluir
 
@@ -83,42 +90,35 @@ Excluir um lançamento, meta ou desejo sempre pede confirmação antes. Não tem
 
 No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma frase como "Você gastou 18% a mais do que em Julho, principalmente em Alimentação" — compara o total de despesas do mês exibido com o mês anterior e aponta a categoria que mais pesou. Some sozinho quando não há mês anterior para comparar, ou quando o modo privacidade está ligado.
 
-## As cinco abas
+## As abas
 
-**Resumo Mensal** — receitas, despesas e saldo do mês, insight automático, gráfico de pizza com o percentual gasto por categoria e gráfico de barras comparando os últimos 6 meses.
+**Resumo Mensal** — "quanto posso gastar hoje", saldo do mês com receitas e despesas, contas a vencer, alertas de orçamento, ranking de gastos por categoria, categorias mês a mês e evolução patrimonial.
 
-**Lançamentos** — a lista completa, com busca e filtros por categoria e tipo. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. Receitas aparecem em verde, despesas em vermelho.
+**Lançamentos** — a lista completa, com busca e filtros por categoria, tipo e conta. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. Cada lançamento tem o ícone do que foi comprado. Daqui também sai o **Importar extrato**.
+
+**Contas** — contas e carteiras com saldo, cartões de crédito com limite e fatura (tocar abre a tela da fatura), transferências entre contas.
 
 **Orçamento** — valor planejado x gasto por categoria, com semáforo: verde (tranquilo), amarelo (a partir de 80% do planejado) e vermelho (estourou, mostrando quanto passou). Basta digitar no campo para mudar o planejado.
 
 **Metas** — objetivos de economia com valor meta, valor atual, percentual concluído e prazo. Metas com menos de 30 dias restantes ficam destacadas.
 
-**Desejos** — lista de coisas que você quer comprar, com preço estimado, prioridade e link opcional. O topo mostra o total desejado (soma dos itens ainda não comprados).
+**Desejos** — lista de coisas que você quer comprar, com preço estimado, prioridade e link opcional (só links que começam com http:// ou https://). O topo mostra o total desejado (soma dos itens ainda não comprados).
 
-## Backup local (além da nuvem)
+## Relatório em PDF
 
-**Exportar dados** baixa um `.json` com tudo. **Importar dados** manda um backup anterior de volta para a conta atual na nuvem (soma ao que já existe, não substitui). Serve como segunda camada de segurança, e também para migrar dados entre contas.
+O botão de impressora no topo gera o relatório do mês (resumo, gastos por categoria e todos os lançamentos). No navegador abre a janela de impressão para salvar em PDF; no app Android/iPhone abre o "compartilhar" do celular. Com o modo privacidade ligado, o relatório sai com os valores reais mesmo assim (ele é para você guardar), e o modo volta ao que estava.
 
 ## Identidade visual
 
-Base cinza minimalista com laranja terroso de assinatura nos botões primários, aba ativa e barras de meta. Elementos secundários (selects, botões fantasmas como Ajustes/Exportar/Importar/Sair) usam um terceiro tom, terracota claro. Títulos das abas em maiúsculas. Títulos e valores em **Avenir Next**, que já vem instalada no iPhone e no Mac.
+Preto, branco e cinza, sem laranja: cartões de destaque pretos (no modo escuro viram claros), fundo cinza-claro e cartões brancos arredondados. Verde e vermelho aparecem só em valores positivos e negativos; as categorias têm cores próprias nos gráficos e ícones. Títulos e números em **Space Grotesk** e texto em **Work Sans**, ambas incluídas no app (`fonts/`), então o visual é o mesmo no Android, no iPhone e no computador.
 
-O app fica sempre no modo claro, mesmo que o aparelho esteja no modo escuro — por preferência explícita, não segue o tema do sistema.
+O tema claro ou escuro é escolhido em **Ajustes → Aparência** e sincroniza entre os aparelhos. No celular, o fundo do modo claro alterna faixas pretas e claras.
 
-Todas as cores são variáveis CSS no topo de `css/styles.css`, dentro de `:root`:
-
-- `--primary` — o laranja de assinatura (fundo de botão)
-- `--on-primary` — o texto **sobre** o laranja (branco, para ter contraste)
-- `--primary-text` — o laranja usado **como texto** (percentual das metas, aba ativa), num tom mais fechado para ter contraste
-- `--primary-light` — a terceira cor (fundo dos selects e botões fantasmas)
-
-Se trocar o laranja, ajuste esses juntos e confira o contraste.
+As cores são variáveis CSS no topo de `css/styles.css`, em `:root` (modo claro) e `:root[data-theme="dark"]` (modo escuro): `--primary` (preto de assinatura), `--surface` (cartões), `--income` e `--expense` (verde e vermelho dos valores) e `--chart-1` a `--chart-8` (categorias).
 
 ## Ícone
 
-Os ícones ficam em `icons/`: `icon-180.png` (iPhone), `icon-192.png` e `icon-512.png` (manifest).
-
-Para trocar por uma foto, forneça um **PNG quadrado de 1024×1024** e os três tamanhos são gerados a partir dele. O iOS recorta em quadrado arredondado, então deixe o assunto centralizado e sem detalhe importante nas bordas.
+O ícone (monograma G) fica em `icons/`: `icon-180-v2.png` (iPhone), `icon-192-v2.png` e `icon-512-v2.png` (manifest e Android). Os nomes terminam em `-v2` de propósito: a pasta é servida com cache de 1 ano, então um ícone novo precisa de nome novo. Para trocar, gere PNGs quadrados com assunto centralizado (o iOS recorta em quadrado arredondado) e mude o nome dos arquivos e as referências em `index.html`, `manifest.json` e `sw.js`.
 
 ## Metas
 
@@ -130,4 +130,4 @@ O schema completo (tabelas, permissões, sincronização em tempo real) está em
 
 ## Rodando localmente (opcional, só para testes)
 
-`servidor.js` e a pasta `certs/` permitem rodar uma cópia do app no seu Mac via `https://localhost:8765`, sem precisar publicar no Vercel a cada mudança. Não é necessário para o uso do dia a dia — a versão publicada já faz tudo. Detalhes de como gerar/renovar o certificado local estão nos comentários de `certs/gerar-certificado.sh`.
+`servidor.js` e a pasta `certs/` permitem rodar uma cópia do app no seu computador via `https://localhost:8765`, sem precisar publicar no Vercel a cada mudança. Não é necessário para o uso do dia a dia — a versão publicada já faz tudo. Detalhes de como gerar/renovar o certificado local estão nos comentários de `certs/gerar-certificado.sh`.

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>GRANA — Finanças</title>
 <meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento, metas e lista de desejos." />
 <meta name="theme-color" content="#FDFDFC" />
@@ -68,7 +68,37 @@
         </div>
         <p class="auth-message" id="auth-message" hidden></p>
         <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Entrar</button>
+        <button type="button" class="btn-link auth-esqueci" id="auth-esqueci">Esqueci minha senha</button>
       </form>
+
+      <!-- Pedir o link para redefinir a senha -->
+      <form id="form-recuperar" hidden>
+        <p class="auth-help">Digite o e-mail da sua conta. Se ele estiver cadastrado, enviamos um link para você criar uma senha nova.</p>
+        <div class="form-row">
+          <label for="recuperar-email">E-mail</label>
+          <input type="email" id="recuperar-email" autocomplete="email" required />
+        </div>
+        <p class="auth-message" id="recuperar-message" hidden></p>
+        <button type="submit" class="btn btn-primary auth-submit" id="recuperar-submit">Enviar link</button>
+        <button type="button" class="btn-link auth-esqueci" id="recuperar-voltar">Voltar para entrar</button>
+      </form>
+
+      <!-- Aberta pelo link do e-mail: define a senha nova -->
+      <form id="form-nova-senha" hidden>
+        <p class="auth-help">Escolha uma senha nova para a sua conta.</p>
+        <div class="form-row">
+          <label for="nova-senha">Nova senha</label>
+          <input type="password" id="nova-senha" autocomplete="new-password" minlength="6" required />
+        </div>
+        <div class="form-row">
+          <label for="nova-senha-confirma">Repita a nova senha</label>
+          <input type="password" id="nova-senha-confirma" autocomplete="new-password" minlength="6" required />
+        </div>
+        <p class="auth-message" id="nova-senha-message" hidden></p>
+        <button type="submit" class="btn btn-primary auth-submit" id="nova-senha-submit">Salvar nova senha</button>
+      </form>
+
+      <p class="auth-legal"><a href="https://kafon-s-life.vercel.app/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a></p>
     </div>
   </div>
 </div>
@@ -91,7 +121,7 @@
       <span>Lançamentos</span>
       <span class="nav-dot"></span>
     </button>
-    <button class="nav-item" data-tab="contas" data-recurso="contas">
+    <button class="nav-item" data-tab="contas">
       <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>
       <span>Contas</span>
       <span class="nav-dot"></span>
@@ -273,7 +303,7 @@
         <select id="filter-categoria">
           <option value="">Todas categorias</option>
         </select>
-        <select id="filter-conta" data-recurso="contas">
+        <select id="filter-conta">
           <option value="">Todas as contas</option>
         </select>
         <select id="filter-tipo">
@@ -281,7 +311,7 @@
           <option value="receita">Receita</option>
           <option value="despesa">Despesa</option>
         </select>
-        <button class="btn btn-ghost" id="btn-importar" data-recurso="import">Importar extrato</button>
+        <button class="btn btn-ghost" id="btn-importar">Importar extrato</button>
         <button class="btn btn-primary" id="btn-novo-lancamento">+ Novo lançamento</button>
       </div>
 
@@ -315,7 +345,7 @@
       <div class="secao-head">
         <h2>Contas e carteiras</h2>
         <div class="secao-botoes">
-          <button class="btn btn-ghost" id="btn-transferir" data-recurso="transf">Transferir</button>
+          <button class="btn btn-ghost" id="btn-transferir">Transferir</button>
           <button class="btn btn-primary" id="btn-nova-conta">+ Nova conta</button>
         </div>
       </div>
@@ -327,7 +357,7 @@
       </div>
       <div class="cartoes-grid" id="cartoes-grid"></div>
 
-      <div id="transferencias-bloco" data-recurso="transf" hidden>
+      <div id="transferencias-bloco" hidden>
         <div class="secao-head"><h2>Transferências entre contas</h2></div>
         <div class="transf-lista" id="transf-lista"></div>
       </div>
@@ -427,7 +457,7 @@
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <span>Lançamentos</span>
     </button>
-    <button class="tabbar-item" data-tab="contas" data-recurso="contas">
+    <button class="tabbar-item" data-tab="contas">
       <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>
       <span>Contas</span>
     </button>
@@ -484,7 +514,7 @@
           <select id="lanc-categoria" required></select>
         </div>
       </div>
-      <div class="form-row" id="lanc-conta-row" data-recurso="contas">
+      <div class="form-row" id="lanc-conta-row">
         <label for="lanc-conta">Conta ou cartão</label>
         <select id="lanc-conta"></select>
         <span class="field-hint" id="lanc-conta-hint" hidden></span>
@@ -504,7 +534,7 @@
       </div>
       <div class="form-row">
         <label for="lanc-valor">Valor (R$)</label>
-        <input type="number" id="lanc-valor" step="0.01" min="0" placeholder="0,00" required />
+        <input type="number" id="lanc-valor" step="0.01" min="0.01" placeholder="0,00" required />
       </div>
       <div id="lanc-repeticao-section">
         <div class="form-row">
@@ -605,7 +635,7 @@
       </div>
       <div class="form-row">
         <label for="desejo-link">Link (opcional)</label>
-        <input type="url" id="desejo-link" placeholder="https://..." />
+        <input type="url" id="desejo-link" placeholder="https://..." pattern="https?://\S+" title="O link precisa começar com http:// ou https://" />
       </div>
       <div class="form-row form-row-checkbox">
         <label class="checkbox-label">
@@ -641,7 +671,7 @@
       </div>
       <div class="form-row">
         <label for="cfg-nome">Seu nome</label>
-        <input type="text" id="cfg-nome" placeholder="Ex: Kauê" />
+        <input type="text" id="cfg-nome" placeholder="Ex: Maria" />
         <span class="field-hint">Usado na saudação do topo.</span>
       </div>
       <div class="form-row">
@@ -668,9 +698,16 @@
         <label>Lembretes</label>
         <div class="inline-actions">
           <button type="button" class="btn btn-ghost" id="btn-lembretes-toggle">Ativar lembretes</button>
-          <button type="button" class="btn btn-ghost" id="btn-lembretes-teste" hidden>Enviar teste</button>
         </div>
         <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
+      </div>
+      <div class="form-row zona-dados">
+        <label>Seus dados</label>
+        <div class="inline-actions">
+          <a class="btn btn-ghost" href="https://kafon-s-life.vercel.app/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
+          <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-usuario">Excluir minha conta</button>
+        </div>
+        <span class="field-hint">Excluir a conta apaga para sempre todos os seus dados: lançamentos, contas, cartões, orçamentos, metas e desejos.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
@@ -895,6 +932,31 @@
   </div>
 </div>
 
+<!-- Modal: Excluir minha conta -->
+<div class="modal-overlay" id="modal-excluir-usuario" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Excluir minha conta</h3>
+      <button class="modal-close" data-close-modal="modal-excluir-usuario">&times;</button>
+    </div>
+    <form id="form-excluir-usuario">
+      <p class="excluir-aviso">Isso apaga <strong>para sempre</strong> a sua conta e todos os seus dados: lançamentos, contas, cartões, faturas, transferências, orçamentos, metas e lista de desejos. <strong>Não dá para desfazer.</strong></p>
+      <p class="field-hint excluir-dica">Quer guardar uma cópia antes? Exporte o relatório do mês em PDF.</p>
+      <div class="form-row">
+        <label for="excluir-confirma">Para confirmar, digite EXCLUIR</label>
+        <input type="text" id="excluir-confirma" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      </div>
+      <p class="auth-message" id="excluir-erro" hidden></p>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-excluir-usuario">Cancelar</button>
+          <button type="submit" class="btn btn-danger-solid" id="btn-confirmar-excluir-usuario" disabled>Excluir tudo</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Modal: Confirmação -->
 <div class="modal-overlay" id="modal-confirmar" hidden>
   <div class="modal modal-confirm">
@@ -919,6 +981,7 @@
 <script src="js/vendor/supabase.js" defer></script>
 <script src="js/supabase-config.js" defer></script>
 <script src="js/charts.js" defer></script>
+<script src="js/validacoes.js" defer></script>
 <script src="js/faturas.js" defer></script>
 <script src="js/vencimentos.js" defer></script>
 <script src="js/contas.js" defer></script>
