@@ -212,10 +212,6 @@ function atualizarBotaoImportar() {
   btn.disabled = n === 0;
 }
 
-function formaParaImportados() {
-  return state.formasPagamento.find(f => /^outr[oa]/i.test(f)) || state.formasPagamento.find(f => /pix/i.test(f)) || state.formasPagamento[0] || 'Outro';
-}
-
 /* ---------- Gravação ---------- */
 
 async function confirmarImportacao() {
@@ -226,7 +222,8 @@ async function confirmarImportacao() {
   btn.disabled = true;
   btn.textContent = 'Importando…';
 
-  const forma = destino.cartao ? `Crédito ${destino.cartao.nome}` : formaParaImportados();
+  // Sem forma de pagamento na tela: compra no cartão grava "Crédito <nome>" e o resto "Outro" (a coluna continua no banco).
+  const forma = destino.cartao ? `Crédito ${destino.cartao.nome}` : 'Outro';
   const linhas = selecionadas.map(l => ({
     user_id: session.user.id,
     data: l.data,

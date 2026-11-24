@@ -5,7 +5,6 @@
    =================================================================== */
 
 const CATEGORIAS_PADRAO = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Lazer', 'Educação', 'Assinaturas', 'Outros'];
-const FORMAS_PADRAO = ['Dinheiro', 'Cartão de Débito', 'Cartão de Crédito', 'Pix', 'Transferência', 'Boleto', 'Outro'];
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -18,19 +17,15 @@ const VALOR_OCULTO = 'R$ •••••';
 let state = {
   config: { nome: '', diaPagamento: null, privacidade: false, tema: 'claro' },
   categorias: [...CATEGORIAS_PADRAO],
-  formasPagamento: [...FORMAS_PADRAO],
   lancamentos: [],
   orcamentos: {},
   metas: [],
-  desejos: [],
   // Contas, cartões, pagamentos de fatura e transferências (js/contas.js).
   contas: [],
   cartoes: [],
   faturas: [],
   transferencias: [],
 };
-
-const PRIORIDADE_ORDEM = { alta: 0, media: 1, baixa: 2 };
 
 let supabaseClient = null;
 let session = null;
@@ -41,10 +36,8 @@ let currentDate = new Date();
 let currentYear = currentDate.getFullYear();
 let currentMonth = currentDate.getMonth(); // 0-11
 let sortState = { field: 'data', dir: 'desc' };
-let evolucaoMeses = 12;
 let editingLancId = null;
 let editingMetaId = null;
-let editingDesejoId = null;
 const statAnimStart = new WeakMap(); // guarda o último valor exibido de cada elemento, pra animar a partir dali
 
 /* ---------- Conversão linha do banco <-> objeto usado na tela ---------- */
@@ -64,27 +57,19 @@ function rowToMeta(r) {
   };
 }
 
-function rowToDesejo(r) {
-  return {
-    id: r.id, nome: r.nome, preco: Number(r.preco), prioridade: r.prioridade,
-    link: r.link || '', comprado: !!r.comprado,
-  };
-}
-
 /* ---------- Carregar tudo do Supabase ---------- */
 
 async function fetchAllData() {
   const uid = session.user.id;
 
-  const [lancRes, orcRes, metaRes, desejoRes, cfgRes] = await Promise.all([
+  const [lancRes, orcRes, metaRes, cfgRes] = await Promise.all([
     supabaseClient.from('lancamentos').select('*').order('data', { ascending: false }),
     supabaseClient.from('orcamentos').select('*'),
     supabaseClient.from('metas').select('*').order('created_at', { ascending: true }),
-    supabaseClient.from('wishlist').select('*').order('created_at', { ascending: true }),
     supabaseClient.from('config').select('*').maybeSingle(),
   ]);
 
-  for (const res of [lancRes, orcRes, metaRes, desejoRes, cfgRes]) {
+  for (const res of [lancRes, orcRes, metaRes, cfgRes]) {
     if (res.error) throw res.error;
   }
 
@@ -94,7 +79,6 @@ async function fetchAllData() {
   (orcRes.data || []).forEach(r => { state.orcamentos[r.categoria] = Number(r.valor_planejado); });
 
   state.metas = (metaRes.data || []).map(rowToMeta);
-  state.desejos = (desejoRes.data || []).map(rowToDesejo);
 
   let cfg = cfgRes.data;
   if (!cfg) {
@@ -110,7 +94,6 @@ async function fetchAllData() {
 
   state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade, tema: cfg.tema || 'claro' };
   state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
-  state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
 
   await carregarContas();
 }
@@ -121,12 +104,6 @@ async function fetchAllData() {
 function formatCurrency(value) {
   if (state.config.privacidade) return VALOR_OCULTO;
   return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-/** Versão curta pra rótulos de eixo (R$ 5,2 mil em vez de R$ 5.200,00). */
-function formatCompactCurrency(value) {
-  if (state.config.privacidade) return '•••';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(value || 0);
 }
 
 /** Anima um valor em R$ subindo/descendo do último número exibido até o novo, em vez de trocar de uma vez. */
@@ -409,7 +386,7 @@ function renderInsight() {
 
 /* ---------- Navegação por abas ---------- */
 
-const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', orcamento: 'Orçamento', metas: 'Metas', desejos: 'Desejos' };
+const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', orcamento: 'Orçamento', metas: 'Metas' };
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
@@ -421,8 +398,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === abaDoMenu));
 
   document.getElementById('page-title').textContent = TAB_TITLES[tab];
-  // Metas, Desejos, Contas e Fatura não são por mês (a fatura tem a própria navegação); esconde de vez para não deixar espaço vazio.
-  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'desejos' || tab === 'contas' || tab === 'fatura');
+  // Metas, Contas e Fatura não são por mês (a fatura tem a própria navegação); esconde de vez para não deixar espaço vazio.
+  document.getElementById('month-switcher').hidden = (tab === 'metas' || tab === 'contas' || tab === 'fatura');
 
   renderAll();
 }
@@ -813,144 +790,16 @@ function renderAlertasOrcamento() {
   card.hidden = false;
 }
 
-/* ---------- Categorias mês a mês ---------- */
+/* ---------- Cor das categorias ---------- */
 
-let trendMeses = 6;
-let trendSel = null;      // Set de categorias escolhidas; null = as 4 que mais pesaram no período
-let trendMesSel = null;   // índice do mês destacado; null = o último
-let trendChipsAbertos = false;
-
-/** Cor fixa por categoria (posição na lista de categorias), igual no ranking e nas linhas — assim "azul" é sempre a mesma coisa. */
+/** Cor fixa por categoria (posição na lista de categorias), igual no ranking e nos ícones — assim "azul" é sempre a mesma coisa. */
 function corCategoria(cat) {
   const i = state.categorias.indexOf(cat);
   return CHART_PALETTE[(i >= 0 ? i : state.categorias.length) % CHART_PALETTE.length];
 }
 
-function computeCategoriaMensal(count) {
-  const meses = [];
-  for (let k = count - 1; k >= 0; k--) {
-    const d = new Date(currentYear, currentMonth - k, 1);
-    const y = d.getFullYear(), m = d.getMonth();
-    const porCat = {};
-    computeCategoriaBreakdown(getLancamentosForMonth(y, m)).forEach(c => { porCat[c.label] = c.value; });
-    meses.push({ label: `${MESES_ABREV[m]}/${String(y).slice(2)}`, porCat });
-  }
-  const totais = {};
-  meses.forEach(mes => Object.entries(mes.porCat).forEach(([c, v]) => { totais[c] = (totais[c] || 0) + v; }));
-  const ranking = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
-  return { meses, ranking };
-}
-
-function renderCategoriaTrendPanel() {
-  const { meses, ranking } = computeCategoriaMensal(trendMeses);
-  const chips = document.getElementById('trend-chips');
-  const readout = document.getElementById('trend-readout');
-  const chart = document.getElementById('chart-trend');
-
-  if (!ranking.length) {
-    chips.innerHTML = '';
-    readout.innerHTML = '';
-    chart.innerHTML = '<div class="chart-empty">Sem despesas nesse período.</div>';
-    return;
-  }
-
-  const ativas = trendSel ? ranking.filter(c => trendSel.has(c)) : ranking.slice(0, 4);
-  const ativasSet = new Set(ativas);
-
-  // Só as 6 que mais pesaram ficam à vista (mais as que o usuário já ligou); o resto abre em "+N".
-  const VISIVEIS = 6;
-  const visiveis = trendChipsAbertos ? ranking : ranking.filter((c, i) => i < VISIVEIS || ativasSet.has(c));
-  const escondidas = ranking.length - visiveis.length;
-  chips.innerHTML = visiveis.map(c => `
-    <button type="button" class="trend-chip ${ativasSet.has(c) ? 'is-on' : ''}" data-cat="${escapeHtml(c)}" aria-pressed="${ativasSet.has(c)}">
-      <span class="legend-dot" style="background:${corCategoria(c)}"></span>${escapeHtml(c)}
-    </button>
-  `).join('') + (escondidas > 0
-    ? `<button type="button" class="trend-chip trend-chip-more" data-toggle-chips>+${escondidas}</button>`
-    : (trendChipsAbertos && ranking.length > VISIVEIS ? '<button type="button" class="trend-chip trend-chip-more" data-toggle-chips>menos</button>' : ''));
-
-  const series = ativas.map(c => ({ label: c, color: corCategoria(c), values: meses.map(m => m.porCat[c] || 0) }));
-  const idx = (trendMesSel != null && trendMesSel < meses.length) ? trendMesSel : meses.length - 1;
-
-  renderCategoriaTrend(chart, {
-    meses: meses.map(m => m.label), series, selecionado: idx,
-    onSelect: (i) => { trendMesSel = i; renderCategoriaTrendPanel(); },
-  });
-
-  readout.innerHTML = `<div class="trend-readout-title">${meses[idx].label}</div>` + (series.length
-    ? series.map(s => {
-        const v = s.values[idx], antes = idx > 0 ? s.values[idx - 1] : 0;
-        let delta = '';
-        if (idx > 0 && antes > 0) {
-          const p = ((v - antes) / antes) * 100;
-          if (Math.abs(p) >= 1) delta = `<span class="cat-delta ${p > 0 ? 'is-up' : 'is-down'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p).toFixed(0)}%</span>`;
-        }
-        return `<div class="trend-readout-row"><span class="cat-name"><span class="legend-dot" style="background:${s.color}"></span><span class="name-text">${escapeHtml(s.label)}</span></span><span class="trend-readout-val">${formatCurrency(v)}${delta}</span></div>`;
-      }).join('')
-    : '');
-}
-
-function initCategoriaTrend() {
-  // O gráfico é desenhado na largura do painel; ao girar o celular ou redimensionar, redesenha.
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      if (document.getElementById('tab-resumo').classList.contains('is-active')) {
-        renderCategoriaTrendPanel();
-        renderEvolucaoPanel();
-      }
-    }, 150);
-  });
-  document.getElementById('trend-range').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-meses]');
-    if (!btn) return;
-    trendMeses = parseInt(btn.dataset.meses, 10);
-    trendMesSel = null;
-    document.querySelectorAll('#trend-range button').forEach(b => b.classList.toggle('is-active', b === btn));
-    renderCategoriaTrendPanel();
-  });
-  document.getElementById('trend-chips').addEventListener('click', (e) => {
-    const chip = e.target.closest('.trend-chip');
-    if (!chip) return;
-    if (chip.hasAttribute('data-toggle-chips')) {
-      trendChipsAbertos = !trendChipsAbertos;
-      renderCategoriaTrendPanel();
-      return;
-    }
-    const { ranking } = computeCategoriaMensal(trendMeses);
-    if (!trendSel) trendSel = new Set(ranking.slice(0, 4));
-    const cat = chip.dataset.cat;
-    if (trendSel.has(cat)) trendSel.delete(cat); else trendSel.add(cat);
-    renderCategoriaTrendPanel();
-  });
-}
-
 function renderMonthLabel() {
   document.getElementById('month-label').textContent = monthLabel(currentYear, currentMonth);
-}
-
-function initEvolucaoToggle() {
-  document.getElementById('evolucao-range').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-meses]');
-    if (!btn) return;
-    evolucaoMeses = parseInt(btn.dataset.meses, 10);
-    document.querySelectorAll('#evolucao-range button').forEach(b => b.classList.toggle('is-active', b === btn));
-    renderResumo();
-  });
-}
-
-function initEvolucaoHelp() {
-  const btn = document.getElementById('btn-evolucao-help');
-  const pop = document.getElementById('evolucao-help-popover');
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    pop.hidden = !pop.hidden;
-  });
-  pop.querySelector('[data-close-help]').addEventListener('click', () => { pop.hidden = true; });
-  document.addEventListener('click', (e) => {
-    if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) pop.hidden = true;
-  });
 }
 
 /* ---------- Render: Resumo Mensal ---------- */
@@ -973,16 +822,8 @@ function renderResumo() {
   renderCategoriaRanking(breakdown);
   renderContasAVencer();
   renderAlertasOrcamento();
-  renderCategoriaTrendPanel();
 
   renderHeroSpark();
-
-  renderEvolucaoPanel();
-}
-
-function renderEvolucaoPanel() {
-  const evolucao = computeNetWorthEvolution(currentYear, currentMonth, evolucaoMeses);
-  renderAreaChart(document.getElementById('chart-bar'), evolucao);
 }
 
 /* ---------- Render: Lançamentos ---------- */
@@ -1000,12 +841,6 @@ function populateCategoriaSelects() {
   });
   if (state.categorias.includes(catAtual)) formSel.value = catAtual;
   if (state.categorias.includes(filtroAtual)) filterSel.value = filtroAtual;
-
-  const formaSel = document.getElementById('lanc-forma');
-  const formaAtual = formaSel.value;
-  formaSel.innerHTML = '';
-  state.formasPagamento.forEach(f => formaSel.appendChild(new Option(f, f)));
-  if (state.formasPagamento.includes(formaAtual)) formaSel.value = formaAtual;
 }
 
 function getFilteredSortedLancamentos() {
@@ -1023,7 +858,8 @@ function getFilteredSortedLancamentos() {
 
   const { field, dir } = sortState;
   lancs = [...lancs].sort((a, b) => {
-    let av = a[field], bv = b[field];
+    let av = field === 'pagamento' ? rotuloPagamento(a) : a[field];
+    let bv = field === 'pagamento' ? rotuloPagamento(b) : b[field];
     if (typeof av === 'string') av = av.toLowerCase();
     if (typeof bv === 'string') bv = bv.toLowerCase();
     if (av < bv) return dir === 'asc' ? -1 : 1;
@@ -1125,9 +961,8 @@ function openLancamentoModal(id, opcoes = {}) {
     document.getElementById('lanc-data').value = l.data;
     document.getElementById('lanc-descricao').value = l.descricao;
     document.getElementById('lanc-tipo').value = l.tipo;
-    // A categoria/forma pode ter sido removida nos Ajustes depois do lançamento.
+    // A categoria pode ter sido removida nos Ajustes depois do lançamento.
     setSelectValue('lanc-categoria', l.categoria);
-    setSelectValue('lanc-forma', l.formaPagamento);
     document.getElementById('lanc-status').value = l.status;
     document.getElementById('lanc-valor').value = l.valor;
     document.getElementById('btn-excluir-lancamento').hidden = false;
@@ -1238,12 +1073,16 @@ async function onSubmitLancamento(e) {
   const descricaoBase = document.getElementById('lanc-descricao').value.trim();
   const valorBase = parseFloat(document.getElementById('lanc-valor').value) || 0;
   if (valorBase < 0.01) { showToast('Informe um valor de pelo menos R$ 0,01.'); return; }
-  // Conta ou cartão onde o lançamento acontece. Compra no cartão não tem forma/status pra escolher.
+  // Conta ou cartão onde o lançamento acontece. Compra no cartão não tem status pra escolher.
   const destino = lerDestinoLancamento();
+  // A forma de pagamento não é mais escolhida na tela (a conta ou o cartão já dizem isso), mas a coluna continua no banco:
+  // compra no cartão grava "Crédito <nome>", o resto grava "Outro", e um lançamento antigo editado mantém a forma que já tinha.
+  const anterior = id ? state.lancamentos.find(x => x.id === id) : null;
+  const forma = destino.cartao ? `Crédito ${destino.cartao.nome}` : (anterior && !anterior.cartaoId ? anterior.formaPagamento : 'Outro');
   const payloadBase = {
     tipo: document.getElementById('lanc-tipo').value,
     categoria: document.getElementById('lanc-categoria').value,
-    forma_pagamento: destino.cartao ? `Crédito ${destino.cartao.nome}` : document.getElementById('lanc-forma').value,
+    forma_pagamento: forma,
     status: destino.cartao ? 'pago' : document.getElementById('lanc-status').value,
   };
   payloadBase.conta_id = destino.contaId;
@@ -1263,9 +1102,8 @@ async function onSubmitLancamento(e) {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
       // Só recalcula a fatura se mudou o cartão ou a data; editar descrição ou valor não tira a compra da fatura em que caiu
       // (e uma parcela editada não "pula" de fatura sem querer).
-      const antes = state.lancamentos.find(x => x.id === id);
-      const mudou = !antes || antes.cartaoId !== destino.cartaoId || antes.data !== dataBase || !antes.faturaRef;
-      payload.fatura_ref = destino.cartao ? (mudou ? faturaDaCompra(dataBase, destino.cartao) : antes.faturaRef) : null;
+      const mudou = !anterior || anterior.cartaoId !== destino.cartaoId || anterior.data !== dataBase || !anterior.faturaRef;
+      payload.fatura_ref = destino.cartao ? (mudou ? faturaDaCompra(dataBase, destino.cartao) : anterior.faturaRef) : null;
       const { data, error } = await supabaseClient.from('lancamentos').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const idx = state.lancamentos.findIndex(x => x.id === id);
@@ -1552,140 +1390,6 @@ async function deleteMeta(id) {
   renderMetas();
 }
 
-/* ---------- Render: Desejos ---------- */
-
-function getSortedDesejos() {
-  return [...state.desejos].sort((a, b) => {
-    if (a.comprado !== b.comprado) return a.comprado ? 1 : -1;
-    return PRIORIDADE_ORDEM[a.prioridade] - PRIORIDADE_ORDEM[b.prioridade];
-  });
-}
-
-function renderDesejos() {
-  const grid = document.getElementById('wishlist-grid');
-  grid.innerHTML = '';
-  document.getElementById('wishlist-empty').hidden = state.desejos.length > 0;
-
-  const totalDesejado = state.desejos.filter(d => !d.comprado).reduce((s, d) => s + d.preco, 0);
-  document.getElementById('wishlist-total').innerHTML = state.desejos.length
-    ? `Total desejado: <strong>${formatCurrency(totalDesejado)}</strong>`
-    : '';
-
-  const PRIORIDADE_LABEL = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
-
-  getSortedDesejos().forEach(desejo => {
-    const card = document.createElement('div');
-    card.className = 'wishlist-card' + (desejo.comprado ? ' is-comprado' : '');
-    card.dataset.id = desejo.id;
-    card.innerHTML = `
-      <div class="wishlist-header">
-        <span class="wishlist-name">${escapeHtml(desejo.nome)}</span>
-        <span class="badge badge-${desejo.prioridade}">${PRIORIDADE_LABEL[desejo.prioridade]}</span>
-      </div>
-      <div class="wishlist-price">${formatCurrency(desejo.preco)}</div>
-      <div class="wishlist-footer">
-        <span class="badge ${desejo.comprado ? 'badge-pago' : 'badge-pendente'}">${desejo.comprado ? 'Comprado' : 'Na lista'}</span>
-        ${ehLinkWeb(desejo.link) ? `
-          <a class="wishlist-link" href="${escapeHtml(desejo.link.trim())}" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
-            Ver item
-          </a>` : '<span></span>'}
-      </div>
-    `;
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.wishlist-link')) return;
-      openDesejoModal(desejo.id);
-    });
-    grid.appendChild(card);
-  });
-}
-
-function initDesejosTab() {
-  document.getElementById('btn-novo-desejo').addEventListener('click', () => openDesejoModal(null));
-  document.getElementById('btn-novo-desejo-empty').addEventListener('click', () => openDesejoModal(null));
-  document.getElementById('form-desejo').addEventListener('submit', onSubmitDesejo);
-  document.getElementById('btn-excluir-desejo').addEventListener('click', () => {
-    if (!editingDesejoId) return;
-    const id = editingDesejoId;
-    pedirConfirmacao('Excluir este desejo?', () => { deleteDesejo(id); closeModal('modal-desejo'); });
-  });
-}
-
-function openDesejoModal(id) {
-  editingDesejoId = id;
-  const form = document.getElementById('form-desejo');
-  form.reset();
-
-  if (id) {
-    const d = state.desejos.find(x => x.id === id);
-    document.getElementById('modal-desejo-title').textContent = 'Editar desejo';
-    document.getElementById('desejo-id').value = d.id;
-    document.getElementById('desejo-nome').value = d.nome;
-    document.getElementById('desejo-preco').value = d.preco;
-    document.getElementById('desejo-prioridade').value = d.prioridade;
-    document.getElementById('desejo-link').value = d.link;
-    document.getElementById('desejo-comprado').checked = d.comprado;
-    document.getElementById('btn-excluir-desejo').hidden = false;
-  } else {
-    document.getElementById('modal-desejo-title').textContent = 'Novo desejo';
-    document.getElementById('desejo-id').value = '';
-    document.getElementById('btn-excluir-desejo').hidden = true;
-  }
-  openModal('modal-desejo');
-}
-
-async function onSubmitDesejo(e) {
-  e.preventDefault();
-  const id = document.getElementById('desejo-id').value;
-  const btn = e.target.querySelector('button[type="submit"]');
-  const payload = {
-    nome: document.getElementById('desejo-nome').value.trim(),
-    preco: parseFloat(document.getElementById('desejo-preco').value) || 0,
-    prioridade: document.getElementById('desejo-prioridade').value,
-    link: document.getElementById('desejo-link').value.trim(),
-    comprado: document.getElementById('desejo-comprado').checked,
-  };
-  // Só links web: um "javascript:..." ou "data:..." colado aqui viraria um link perigoso na lista.
-  if (payload.link && !ehLinkWeb(payload.link)) {
-    showToast('O link precisa começar com http:// ou https://');
-    return;
-  }
-
-  btn.disabled = true;
-  try {
-    if (id) {
-      const { data, error } = await supabaseClient.from('wishlist').update(payload).eq('id', id).select().single();
-      if (error) throw error;
-      const idx = state.desejos.findIndex(x => x.id === id);
-      state.desejos[idx] = rowToDesejo(data);
-      showToast('Desejo atualizado');
-    } else {
-      const { data, error } = await supabaseClient
-        .from('wishlist')
-        .insert({ ...payload, user_id: session.user.id })
-        .select()
-        .single();
-      if (error) throw error;
-      state.desejos.push(rowToDesejo(data));
-      showToast('Desejo adicionado');
-    }
-    closeModal('modal-desejo');
-    haptic();
-    renderDesejos();
-  } catch (err) {
-    showToast('Erro ao salvar: ' + err.message);
-  }
-  btn.disabled = false;
-}
-
-async function deleteDesejo(id) {
-  const { error } = await supabaseClient.from('wishlist').delete().eq('id', id);
-  if (error) { showToast('Erro ao excluir: ' + error.message); return; }
-  state.desejos = state.desejos.filter(x => x.id !== id);
-  showToast('Desejo excluído');
-  renderDesejos();
-}
-
 /* ---------- Ajustes ---------- */
 
 function initAjustes() {
@@ -1693,8 +1397,7 @@ function initAjustes() {
   document.getElementById('form-ajustes').addEventListener('submit', onSubmitAjustes);
   document.getElementById('btn-restaurar-padrao').addEventListener('click', () => {
     document.getElementById('cfg-categorias').value = CATEGORIAS_PADRAO.join('\n');
-    document.getElementById('cfg-formas').value = FORMAS_PADRAO.join('\n');
-    showToast('Listas padrão restauradas — salve para aplicar');
+    showToast('Categorias padrão restauradas — salve para aplicar');
   });
 }
 
@@ -1702,7 +1405,6 @@ function openAjustes() {
   document.getElementById('cfg-nome').value = state.config.nome || '';
   document.getElementById('cfg-dia-pagamento').value = state.config.diaPagamento || '';
   document.getElementById('cfg-categorias').value = state.categorias.join('\n');
-  document.getElementById('cfg-formas').value = state.formasPagamento.join('\n');
   atualizarBotaoFaceId();
   atualizarLembretesUI();
   openModal('modal-ajustes');
@@ -1717,13 +1419,11 @@ async function onSubmitAjustes(e) {
 
   // Repetidas (ignorando maiúsculas e acentos, "Saúde" = "saude") saem; fica a primeira.
   const categoriasDigitadas = parseLinhas(document.getElementById('cfg-categorias').value);
-  const formasDigitadas = parseLinhas(document.getElementById('cfg-formas').value);
   const categorias = removerRepetidas(categoriasDigitadas);
-  const formas = removerRepetidas(formasDigitadas);
-  const removidas = (categoriasDigitadas.length - categorias.length) + (formasDigitadas.length - formas.length);
+  const removidas = categoriasDigitadas.length - categorias.length;
 
-  if (!categorias.length || !formas.length) {
-    showToast('Categorias e formas de pagamento não podem ficar vazias');
+  if (!categorias.length) {
+    showToast('A lista de categorias não pode ficar vazia');
     return;
   }
 
@@ -1732,7 +1432,6 @@ async function onSubmitAjustes(e) {
     nome: document.getElementById('cfg-nome').value.trim(),
     dia_pagamento: (dia >= 1 && dia <= 31) ? dia : null,
     categorias,
-    formas_pagamento: formas,
   };
 
   const btn = e.target.querySelector('button[type="submit"]');
@@ -1749,7 +1448,6 @@ async function onSubmitAjustes(e) {
     state.config.nome = data.nome || '';
     state.config.diaPagamento = data.dia_pagamento;
     state.categorias = data.categorias;
-    state.formasPagamento = data.formas_pagamento;
 
     populateCategoriaSelects();
     closeModal('modal-ajustes');
@@ -2073,66 +1771,6 @@ function showToast(msg, ms = 2600) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), ms);
 }
 
-/* ---------- Relatório em PDF (via diálogo de impressão do navegador) ---------- */
-
-/** Monta uma view imprimível com o mês corrente e abre o diálogo de impressão —
-    de lá o usuário escolhe "Salvar como PDF", sem precisar de biblioteca nenhuma.
-    Ignora o modo privacidade: gerar o relatório é uma ação explícita, não faz
-    sentido devolver um PDF cheio de "•••••" pro usuário que acabou de pedir por ele. */
-function gerarRelatorioPDF() {
-  const privacidadeAntes = state.config.privacidade;
-  state.config.privacidade = false;
-  try {
-    montarEImprimirRelatorio();
-  } finally {
-    state.config.privacidade = privacidadeAntes;
-  }
-}
-
-function montarEImprimirRelatorio() {
-  const lancs = getLancamentosForMonth(currentYear, currentMonth).slice().sort((a, b) => a.data.localeCompare(b.data));
-  const { receitas, despesas, saldo } = computeTotals(lancs);
-  const breakdown = computeCategoriaBreakdown(lancs);
-  const totalDespesas = breakdown.reduce((s, b) => s + b.value, 0);
-
-  const linhasCategorias = breakdown.map(b => `
-    <tr><td>${escapeHtml(b.label)}</td><td>${formatCurrency(b.value)}</td><td>${totalDespesas ? ((b.value / totalDespesas) * 100).toFixed(1) : '0.0'}%</td></tr>
-  `).join('');
-
-  const linhasLancamentos = lancs.map(l => `
-    <tr>
-      <td>${formatDateDisplay(l.data)}</td>
-      <td>${escapeHtml(l.descricao)}</td>
-      <td>${escapeHtml(l.categoria)}</td>
-      <td>${l.status === 'pago' ? 'Pago' : 'Pendente'}</td>
-      <td class="print-valor ${l.tipo}">${l.tipo === 'receita' ? '+ ' : '− '}${formatCurrency(l.valor)}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('print-report').innerHTML = `
-    <header class="print-header">
-      <span class="print-brand">GRANA</span>
-      <h1>${monthLabel(currentYear, currentMonth)}</h1>
-    </header>
-    <section class="print-summary">
-      <div><span>Receitas</span><strong>${formatCurrency(receitas)}</strong></div>
-      <div><span>Despesas</span><strong>${formatCurrency(despesas)}</strong></div>
-      <div><span>Saldo</span><strong>${formatCurrency(saldo)}</strong></div>
-    </section>
-    ${breakdown.length ? `
-    <section>
-      <h2>Gastos por categoria</h2>
-      <table><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>${linhasCategorias}</tbody></table>
-    </section>` : ''}
-    <section>
-      <h2>Lançamentos</h2>
-      <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Status</th><th>Valor</th></tr></thead><tbody>${linhasLancamentos || '<tr><td colspan="5">Nenhum lançamento neste mês.</td></tr>'}</tbody></table>
-    </section>
-    <footer class="print-footer">Gerado em ${new Date().toLocaleDateString('pt-BR')} pelo GRANA</footer>
-  `;
-  window.print();
-}
-
 /* ---------- Sincronização em tempo real ---------- */
 /* Uma alteração feita num aparelho aparece nos outros sem precisar recarregar.
    Os handlers são seguros mesmo quando o evento é eco da própria escrita deste
@@ -2185,23 +1823,11 @@ function iniciarRealtime() {
       }
       renderMetas();
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'wishlist', filter: filtro }, (payload) => {
-      if (payload.eventType === 'DELETE') {
-        state.desejos = state.desejos.filter(x => x.id !== payload.old.id);
-      } else if (payload.eventType === 'INSERT') {
-        if (!state.desejos.some(x => x.id === payload.new.id)) state.desejos.push(rowToDesejo(payload.new));
-      } else {
-        const idx = state.desejos.findIndex(x => x.id === payload.new.id);
-        if (idx >= 0) state.desejos[idx] = rowToDesejo(payload.new);
-      }
-      renderDesejos();
-    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: filtro }, (payload) => {
       if (payload.eventType === 'DELETE') return;
       const cfg = payload.new;
       state.config = { nome: cfg.nome || '', diaPagamento: cfg.dia_pagamento, privacidade: !!cfg.privacidade, tema: cfg.tema || 'claro' };
       state.categorias = (cfg.categorias && cfg.categorias.length) ? cfg.categorias : [...CATEGORIAS_PADRAO];
-      state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
       aplicarTema(state.config.tema);
       localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
       populateCategoriaSelects();
@@ -2442,7 +2068,6 @@ function renderAll() {
   renderLancamentos();
   renderOrcamento();
   renderMetas();
-  renderDesejos();
   renderContasTudo();
 }
 
@@ -2532,17 +2157,13 @@ function init() {
   initAuthScreen();
   initTabNav();
   initMonthSwitcher();
-  initEvolucaoToggle();
-  initEvolucaoHelp();
   initCategoriaRanking();
-  initCategoriaTrend();
   initLancamentosTab();
   initContas();
   initContasAVencer();
   initQuantoPosso();
   initImportar();
   initMetasTab();
-  initDesejosTab();
   initAjustes();
   initExcluirConta();
   initModals();
@@ -2553,7 +2174,6 @@ function init() {
   initLoadRetry();
   initLockScreen();
   document.getElementById('btn-privacidade').addEventListener('click', togglePrivacidade);
-  document.getElementById('btn-exportar-pdf').addEventListener('click', gerarRelatorioPDF);
 
   // Quem abre o link do e-mail chega com "type=recovery" no endereço. A sessão que o Supabase cria por causa dele
   // costuma ser anunciada antes do evento de recuperação, então marcamos já aqui pra ela não entrar direto no app.

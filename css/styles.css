@@ -469,11 +469,6 @@ input, select { font-family: inherit; }
 }
 
 /* ===== Panels / charts ===== */
-.charts-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -482,39 +477,13 @@ input, select { font-family: inherit; }
   box-shadow: var(--shadow-sm);
 }
 .panel h2 { font-size: 15px; margin-bottom: 14px; color: var(--text); }
-.panel-relative { position: relative; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.panel-header h2 { margin-bottom: 0; }
-.panel-title-group { display: flex; align-items: center; gap: 7px; }
-.help-btn {
-  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; padding: 0;
-  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted);
-  font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-}
-.help-btn:hover { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-.help-popover[hidden] { display: none; }
-.help-popover {
-  position: absolute; top: 46px; right: 20px; width: 260px; z-index: 20;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-lg); padding: 14px 30px 14px 16px;
-}
-.help-popover p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
-.help-popover p:last-child { margin-bottom: 0; }
-.help-popover p strong { color: var(--text); }
-.help-popover-close {
-  position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: none;
-  background: transparent; color: var(--text-faint); font-size: 16px; line-height: 1; border-radius: 6px;
-}
-.help-popover-close:hover { background: var(--surface-2); color: var(--text); }
 .range-toggle { display: flex; gap: 4px; background: var(--surface-2); border-radius: 999px; padding: 3px; flex-shrink: 0; }
 .range-toggle button {
   border: none; background: transparent; color: var(--text-muted);
   font-size: 11.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
 }
 .range-toggle button.is-active { background: var(--primary); color: var(--on-primary); }
-.chart-wrap { display: flex; align-items: center; justify-content: center; min-height: 220px; width: 100%; }
-.chart-wrap svg { max-width: 100%; height: auto; }
-.chart-empty { color: var(--text-faint); font-size: 13.5px; padding: 40px 0; }
+.chart-empty { color: var(--text-faint); font-size: 13.5px; padding: 40px 0; text-align: center; }
 
 /* Contas a vencer (Resumo) */
 .vencer-card[hidden] { display: none; }
@@ -556,23 +525,6 @@ input, select { font-family: inherit; }
 .budget-alert-more { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-muted); }
 
 /* Categorias mês a mês */
-.evo-panel { margin-top: 16px; }
-.panel-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--text-muted); }
-.trend-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-.trend-chip {
-  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
-  border: 1px solid var(--border); background: transparent; color: var(--text-faint);
-  font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
-.trend-chip .legend-dot { opacity: 0.45; }
-.trend-chip-more { color: var(--text-muted); font-weight: 700; }
-.trend-chip.is-on { background: var(--surface-2); color: var(--text); border-color: transparent; }
-.trend-chip.is-on .legend-dot { opacity: 1; }
-.trend-readout { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
-.trend-readout-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.trend-readout-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13.5px; }
-.trend-readout-val { display: flex; align-items: center; gap: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.trend-readout-val .cat-delta { font-size: 11.5px; }
 
 /* Ranking de gastos por categoria */
 .cat-ranking { display: flex; flex-direction: column; gap: 4px; }
@@ -703,9 +655,6 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .badge-pendente { background: var(--warning-bg); color: var(--warning); }
 .badge-receita { background: var(--income-bg); color: var(--income); }
 .badge-despesa { background: var(--expense-bg); color: var(--expense); }
-.badge-alta { background: var(--expense-bg); color: var(--expense); }
-.badge-media { background: var(--warning-bg); color: var(--warning); }
-.badge-baixa { background: var(--surface-2); color: var(--text-muted); }
 .cat-pill { color: var(--text-muted); font-size: 13px; }
 
 .row-delete-btn {
@@ -795,43 +744,6 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .goal-deadline-warn { color: var(--danger); font-weight: 600; }
 .goal-deadline-over { color: var(--danger); font-weight: 600; }
 
-/* ===== Desejos ===== */
-.wishlist-total { font-size: 13.5px; color: var(--text-muted); align-self: center; }
-.wishlist-total strong { color: var(--text); font-weight: 700; }
-
-.wishlist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-.wishlist-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.wishlist-card:hover { box-shadow: var(--shadow); border-color: var(--primary-light); }
-.wishlist-card.is-comprado { opacity: 0.55; }
-.wishlist-header { display: flex; align-items: flex-start; gap: 9px; }
-.wishlist-name { font-weight: 700; font-size: 15.5px; flex: 1; min-width: 0; }
-.wishlist-card.is-comprado .wishlist-name { text-decoration: line-through; }
-.wishlist-price { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
-.wishlist-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.wishlist-link {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12.5px; font-weight: 600; color: var(--primary-text);
-}
-.wishlist-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
-.wishlist-link:hover { text-decoration: underline; }
-
-.form-row-checkbox { flex-direction: row; align-items: center; }
-.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); font-weight: 500; cursor: pointer; }
-.checkbox-label input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
 
 /* ===== Trava rápida com Face ID/Touch ID ===== */
 .lock-screen[hidden] { display: none; }
@@ -987,7 +899,7 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura, #form-transferencia, #form-excluir-usuario { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura, #form-transferencia, #form-excluir-usuario { padding: 18px 22px 22px; }
 .modal-confirm-body { padding: 18px 22px 22px; }
 .modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
 .form-row[hidden] { display: none; }
@@ -1360,7 +1272,6 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
-  .charts-row { grid-template-columns: 1fr; }
   .budget-item {
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -1398,17 +1309,16 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
      `display: contents` joga os filhos de .topbar-right direto no grid da .topbar. */
   .topbar {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     grid-template-areas:
-      "titulo  olho  pdf"
-      "mes     mes   mes";
+      "titulo  olho"
+      "mes     mes";
     align-items: start;
     gap: 12px;
   }
   .topbar-left { grid-area: titulo; }
   .topbar-right { display: contents; }
   #btn-privacidade { grid-area: olho; }
-  #btn-exportar-pdf { grid-area: pdf; }
   #month-switcher { grid-area: mes; width: 100%; justify-content: space-between; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .toolbar > * { width: 100%; }
@@ -1466,34 +1376,10 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
   /* O que antes ficava solto sobre o fundo claro vira cartão, pra continuar legível e com os botões visíveis. */
   :root:not([data-theme="dark"]) .toolbar,
   :root:not([data-theme="dark"]) .section-hint,
-  :root:not([data-theme="dark"]) #goals-empty,
-  :root:not([data-theme="dark"]) #wishlist-empty {
+  :root:not([data-theme="dark"]) #goals-empty {
     background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-sm);
   }
   :root:not([data-theme="dark"]) .section-hint { max-width: none; margin-bottom: 14px; }
   .toolbar > div:empty { display: none; }
   :root:not([data-theme="dark"]) .data-actions { border-top-color: rgba(255, 255, 255, 0.14); }
-}
-
-/* ===== Relatório em PDF — só existe pro diálogo de impressão do navegador ===== */
-.print-report { display: none; }
-@media print {
-  .app, .auth-screen, .modal-overlay, .toast, .fab, .lock-screen { display: none !important; }
-  .print-report { display: block !important; color: #0B0B0B; font-family: var(--font); padding: 0; }
-  .print-header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #0B0B0B; padding-bottom: 12px; margin-bottom: 20px; }
-  .print-brand { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; }
-  .print-header h1 { font-family: var(--font-display); font-size: 20px; margin: 0; }
-  .print-summary { display: flex; gap: 32px; margin-bottom: 24px; }
-  .print-summary div { display: flex; flex-direction: column; gap: 3px; }
-  .print-summary span { font-size: 11px; color: #57554C; text-transform: uppercase; letter-spacing: 0.04em; }
-  .print-summary strong { font-family: var(--font-display); font-size: 17px; }
-  .print-report section { margin-bottom: 22px; }
-  .print-report h2 { font-family: var(--font-display); font-size: 13px; margin: 0 0 10px; }
-  .print-report table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-  .print-report th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: #57554C; padding: 5px 8px; border-bottom: 1px solid #ccc; }
-  .print-report td { padding: 5px 8px; border-bottom: 1px solid #e4e2dc; }
-  .print-report th:last-child, .print-report td:last-child { text-align: right; }
-  .print-valor.receita { color: #0d6b3f; }
-  .print-valor.despesa { color: #a3251d; }
-  .print-footer { margin-top: 24px; font-size: 10px; color: #8A887F; }
 }

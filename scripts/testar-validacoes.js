@@ -5,22 +5,6 @@ const v = require('../js/validacoes.js');
 let ok = 0;
 function t(nome, fn) { fn(); ok++; console.log('  ok  ' + nome); }
 
-t('link do desejo: só http:// e https://', () => {
-  assert.strictEqual(v.ehLinkWeb('https://loja.com.br/produto?id=1'), true);
-  assert.strictEqual(v.ehLinkWeb('http://exemplo.com'), true);
-  assert.strictEqual(v.ehLinkWeb('  HTTPS://EXEMPLO.COM  '), true);
-  assert.strictEqual(v.ehLinkWeb('javascript:alert(1)'), false);
-  assert.strictEqual(v.ehLinkWeb('JavaScript:alert(1)'), false);
-  assert.strictEqual(v.ehLinkWeb('data:text/html,<script>alert(1)</script>'), false);
-  assert.strictEqual(v.ehLinkWeb('ftp://servidor.com/arquivo'), false);
-  assert.strictEqual(v.ehLinkWeb('//exemplo.com'), false);
-  assert.strictEqual(v.ehLinkWeb('www.loja.com'), false);
-  assert.strictEqual(v.ehLinkWeb('https://'), false);
-  assert.strictEqual(v.ehLinkWeb('https://loja.com e mais texto'), false);
-  assert.strictEqual(v.ehLinkWeb(''), false);
-  assert.strictEqual(v.ehLinkWeb(null), false);
-});
-
 t('repetidas: ignora maiúsculas, acentos e espaços a mais; fica a primeira grafia', () => {
   assert.deepStrictEqual(v.removerRepetidas(['Saúde', 'saude', 'SAÚDE ', 'Lazer', 'lazer']), ['Saúde', 'Lazer']);
   assert.deepStrictEqual(v.removerRepetidas(['Cartão de Crédito', 'cartao  de   credito', 'Pix']), ['Cartão de Crédito', 'Pix']);

@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>GRANA — Finanças</title>
-<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, orçamento, metas e lista de desejos." />
+<meta name="description" content="Controle financeiro pessoal: resumo mensal, lançamentos, contas, cartões, orçamento e metas." />
 <meta name="theme-color" content="#FDFDFC" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -136,10 +136,6 @@
       <span>Metas</span>
       <span class="nav-dot"></span>
     </button>
-    <button class="nav-item" data-tab="desejos">
-      <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
-      <span>Desejos</span>
-      <span class="nav-dot"></span>
     </button>
     <div class="sidebar-footer">
       <button class="nav-item nav-item-ghost btn-ajustes">
@@ -174,9 +170,6 @@
             <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
-        <button class="icon-btn" id="btn-exportar-pdf" aria-label="Exportar relatório em PDF" title="Exportar relatório em PDF">
-          <svg viewBox="0 0 24 24"><path d="M6 9V3h9l3 3v3M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2M6 14h12v7H6z"/></svg>
-        </button>
       </div>
     </header>
 
@@ -253,46 +246,9 @@
         <div class="budget-alert-list" id="budget-alert-list"></div>
       </div>
 
-      <div class="charts-row">
-        <div class="panel">
-          <h2>Gastos por categoria</h2>
-          <div class="cat-ranking" id="cat-ranking"></div>
-        </div>
-        <div class="panel trend-panel">
-          <div class="panel-header">
-            <div>
-              <h2>Categorias mês a mês</h2>
-              <p class="panel-sub">Para ver se um gasto está subindo ou caindo com o tempo.</p>
-            </div>
-            <div class="range-toggle" id="trend-range">
-              <button type="button" data-meses="3">3 meses</button>
-              <button type="button" class="is-active" data-meses="6">6 meses</button>
-              <button type="button" data-meses="12">12 meses</button>
-            </div>
-          </div>
-          <div class="trend-chips" id="trend-chips"></div>
-          <div class="chart-wrap" id="chart-trend"></div>
-          <div class="trend-readout" id="trend-readout"></div>
-        </div>
-      </div>
-
-      <div class="panel panel-relative evo-panel">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <h2>Evolução patrimonial</h2>
-            <button type="button" class="help-btn" id="btn-evolucao-help" aria-label="O que é este gráfico?">?</button>
-          </div>
-          <div class="range-toggle" id="evolucao-range">
-            <button type="button" data-meses="6">6 meses</button>
-            <button type="button" class="is-active" data-meses="12">12 meses</button>
-          </div>
-        </div>
-        <div class="help-popover" id="evolucao-help-popover" hidden>
-          <button type="button" class="help-popover-close" data-close-help aria-label="Fechar">&times;</button>
-          <p><strong>O que é isso?</strong> É a soma de tudo que entrou menos tudo que saiu, mês a mês, desde o seu primeiro lançamento — não é o gasto de um mês, é o quanto sobrou (ou faltou) no total ao longo do tempo.</p>
-          <p>Serve pra ver se seu saldo está crescendo ou encolhendo com o tempo. Os botões 6/12 meses só controlam quanto desse histórico aparece no gráfico.</p>
-        </div>
-        <div class="chart-wrap" id="chart-bar"></div>
+      <div class="panel">
+        <h2>Gastos por categoria</h2>
+        <div class="cat-ranking" id="cat-ranking"></div>
       </div>
     </section>
 
@@ -323,7 +279,7 @@
               <th data-sort="descricao">Descrição</th>
               <th data-sort="categoria">Categoria</th>
               <th data-sort="tipo">Tipo</th>
-              <th data-sort="formaPagamento">Pagamento</th>
+              <th data-sort="pagamento">Pagamento</th>
               <th data-sort="valor" class="col-right">Valor</th>
               <th data-sort="status">Status</th>
               <th class="col-actions"></th>
@@ -428,19 +384,6 @@
       </div>
     </section>
 
-    <!-- DESEJOS -->
-    <section class="tab-panel" id="tab-desejos">
-      <div class="toolbar">
-        <div class="wishlist-total" id="wishlist-total"></div>
-        <button class="btn btn-primary" id="btn-novo-desejo">+ Novo desejo</button>
-      </div>
-      <div class="wishlist-grid" id="wishlist-grid"></div>
-      <div class="empty-state" id="wishlist-empty" hidden>
-        <p>Nenhum item na lista de desejos ainda.</p>
-        <button class="btn btn-primary" id="btn-novo-desejo-empty">+ Novo desejo</button>
-      </div>
-    </section>
-
     <div class="data-actions">
       <button class="btn btn-ghost btn-ajustes">Ajustes</button>
       <button class="btn btn-ghost btn-sair">Sair</button>
@@ -469,10 +412,6 @@
       <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.6L21 9.3l-5 4.6 1.4 6.9L12 17.6 6.6 20.8 8 13.9 3 9.3l6.4-.7z"/></svg>
       <span>Metas</span>
     </button>
-    <button class="tabbar-item" data-tab="desejos">
-      <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
-      <span>Desejos</span>
-    </button>
   </nav>
 
   <button class="fab" id="fab-novo-lancamento" aria-label="Novo lançamento">
@@ -480,9 +419,6 @@
   </button>
 
 </div>
-
-<!-- Relatório imprimível — só aparece no diálogo de impressão/PDF, fica oculto na tela -->
-<div id="print-report" class="print-report"></div>
 
 <!-- Modal: Lançamento -->
 <div class="modal-overlay" id="modal-lancamento" hidden>
@@ -519,18 +455,12 @@
         <select id="lanc-conta"></select>
         <span class="field-hint" id="lanc-conta-hint" hidden></span>
       </div>
-      <div class="form-row form-row-split" id="lanc-forma-status-row">
-        <div>
-          <label for="lanc-forma">Forma de Pagamento</label>
-          <select id="lanc-forma" required></select>
-        </div>
-        <div>
-          <label for="lanc-status">Status</label>
-          <select id="lanc-status" required>
-            <option value="pago">Pago</option>
-            <option value="pendente">Pendente</option>
-          </select>
-        </div>
+      <div class="form-row" id="lanc-status-row">
+        <label for="lanc-status">Status</label>
+        <select id="lanc-status" required>
+          <option value="pago">Pago</option>
+          <option value="pendente">Pendente</option>
+        </select>
       </div>
       <div class="form-row">
         <label for="lanc-valor">Valor (R$)</label>
@@ -606,54 +536,6 @@
   </div>
 </div>
 
-<!-- Modal: Desejo -->
-<div class="modal-overlay" id="modal-desejo" hidden>
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="modal-desejo-title">Novo desejo</h3>
-      <button class="modal-close" data-close-modal="modal-desejo">&times;</button>
-    </div>
-    <form id="form-desejo">
-      <input type="hidden" id="desejo-id" />
-      <div class="form-row">
-        <label for="desejo-nome">O que você quer comprar</label>
-        <input type="text" id="desejo-nome" placeholder="Ex: Fone de ouvido" required />
-      </div>
-      <div class="form-row form-row-split">
-        <div>
-          <label for="desejo-preco">Preço estimado (R$)</label>
-          <input type="number" id="desejo-preco" step="0.01" min="0" placeholder="0,00" required />
-        </div>
-        <div>
-          <label for="desejo-prioridade">Prioridade</label>
-          <select id="desejo-prioridade" required>
-            <option value="alta">Alta</option>
-            <option value="media" selected>Média</option>
-            <option value="baixa">Baixa</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <label for="desejo-link">Link (opcional)</label>
-        <input type="url" id="desejo-link" placeholder="https://..." pattern="https?://\S+" title="O link precisa começar com http:// ou https://" />
-      </div>
-      <div class="form-row form-row-checkbox">
-        <label class="checkbox-label">
-          <input type="checkbox" id="desejo-comprado" />
-          <span>Já comprei este item</span>
-        </label>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-desejo" hidden>Excluir</button>
-        <div class="modal-actions-right">
-          <button type="button" class="btn btn-ghost" data-close-modal="modal-desejo">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- Modal: Ajustes -->
 <div class="modal-overlay" id="modal-ajustes" hidden>
   <div class="modal">
@@ -684,11 +566,6 @@
         <textarea id="cfg-categorias" rows="8" spellcheck="false"></textarea>
         <span class="field-hint">Uma por linha. Aparecem no menu de lançamentos e no orçamento.</span>
       </div>
-      <div class="form-row">
-        <label for="cfg-formas">Suas formas de pagamento</label>
-        <textarea id="cfg-formas" rows="6" spellcheck="false"></textarea>
-        <span class="field-hint">Uma por linha. Use os nomes reais dos seus bancos e cartões.</span>
-      </div>
       <div class="form-row" id="faceid-row" hidden>
         <label>Trava rápida</label>
         <button type="button" class="btn btn-ghost" id="btn-faceid-toggle">Ativar Face ID</button>
@@ -707,7 +584,7 @@
           <a class="btn btn-ghost" href="https://kafon-s-life.vercel.app/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
           <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-usuario">Excluir minha conta</button>
         </div>
-        <span class="field-hint">Excluir a conta apaga para sempre todos os seus dados: lançamentos, contas, cartões, orçamentos, metas e desejos.</span>
+        <span class="field-hint">Excluir a conta apaga para sempre todos os seus dados: lançamentos, contas, cartões, orçamentos e metas.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
@@ -940,8 +817,7 @@
       <button class="modal-close" data-close-modal="modal-excluir-usuario">&times;</button>
     </div>
     <form id="form-excluir-usuario">
-      <p class="excluir-aviso">Isso apaga <strong>para sempre</strong> a sua conta e todos os seus dados: lançamentos, contas, cartões, faturas, transferências, orçamentos, metas e lista de desejos. <strong>Não dá para desfazer.</strong></p>
-      <p class="field-hint excluir-dica">Quer guardar uma cópia antes? Exporte o relatório do mês em PDF.</p>
+      <p class="excluir-aviso">Isso apaga <strong>para sempre</strong> a sua conta e todos os seus dados: lançamentos, contas, cartões, faturas, transferências, orçamentos e metas. <strong>Não dá para desfazer.</strong></p>
       <div class="form-row">
         <label for="excluir-confirma">Para confirmar, digite EXCLUIR</label>
         <input type="text" id="excluir-confirma" autocomplete="off" autocapitalize="characters" spellcheck="false" />

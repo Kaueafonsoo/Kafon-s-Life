@@ -14,7 +14,7 @@ Abra **Ajustes** (na barra lateral no computador, no rodapé da tela no celular)
 
 - **Seu nome** — aparece na saudação do topo, que muda conforme a hora do dia.
 - **Dia do salário** — o Resumo passa a mostrar quantos dias faltam e quanto sobra por dia até lá. Deixe vazio para esconder esse cartão.
-- **Suas categorias** e **suas formas de pagamento** — uma por linha. Troque as listas genéricas pelas suas de verdade (Academia, Pets, Nubank, Itaú...). É o que mais acelera o lançamento no dia a dia.
+- **Suas categorias** — uma por linha. Troque a lista genérica pela sua de verdade (Academia, Pets, Mercado...). É o que mais acelera o lançamento no dia a dia. A forma de pagamento não é mais escolhida: a conta ou o cartão do lançamento já dizem isso (veja "Contas, cartões de crédito e faturas").
 
 Lançamentos antigos que usem uma categoria removida continuam intactos: ao editar, ela aparece marcada como "(removida)".
 
@@ -42,7 +42,7 @@ Aba **Contas** (e a tela da fatura, aberta ao tocar num cartão).
 - **Cartão de crédito:** limite, **melhor dia de compra** e dia de vencimento — os mesmos dados que o app do banco mostra. Compras feitas **a partir do melhor dia** entram só na fatura seguinte; as de antes ainda entram na fatura que está fechando (no Nubank o melhor dia é o próprio dia de fechamento; no Inter é o dia seguinte ao fechamento). A fatura fecha, portanto, no dia anterior ao melhor dia (melhor dia 1 = fecha no último dia do mês). O vencimento é o primeiro dia de vencer depois do fechamento (fecha 25 e vence 5 → vence no mês seguinte; fecha 3 e vence 10 → vence no mesmo mês). A fatura é identificada pelo mês do vencimento ("fatura de dezembro" vence em dezembro). As regras estão em `js/faturas.js` e são testadas com `node scripts/testar-faturas.js`.
 - **Parcelas e recorrências no cartão:** cada parcela cai numa fatura seguinte. O **limite usado** conta a compra inteira até as parcelas serem pagas, como no banco.
 - **Pagar fatura:** debita o total da conta escolhida e marca a fatura como paga (dá para desfazer). O pagamento fica na tabela `faturas`, **não** em lançamentos, para a despesa não contar duas vezes (ela já contou na compra); por isso o Resumo e o Orçamento não mudam ao pagar. Há também a opção de só marcar como paga, sem debitar de nenhuma conta, útil para faturas antigas.
-- **Lançamentos antigos no crédito:** ao criar um cartão, o app oferece trazer as despesas que você já lançou com uma forma de pagamento como "Crédito Nubank" e as coloca nas faturas certas.
+- **Lançamentos antigos no crédito:** ao criar um cartão, o app oferece trazer as despesas que você já lançou com uma forma de pagamento como "Crédito Nubank" e as coloca nas faturas certas. A coluna `forma_pagamento` continua no banco: compra no cartão grava "Crédito <nome>", o resto grava "Outro", e lançamentos antigos mantêm o valor que já tinham.
 - Contas e cartões com histórico não podem ser apagados: são **arquivados** (somem das listas, o histórico fica) e podem ser reativados.
 
 **Antes de publicar esta versão no site:** rode o `supabase/schema.sql` inteiro no SQL Editor do Supabase. Ele só **adiciona** (tabelas `contas`, `cartoes`, `faturas` e três colunas em `lancamentos`), não apaga nada, e pode ser rodado várias vezes. Quem já tem lançamentos ganha uma "Conta principal" e os lançamentos antigos (menos os pagos no crédito) passam a apontar para ela. O app **exige** o schema completo: se o site subir antes do SQL, a tela mostra "Não deu pra carregar seus dados" com o botão de tentar de novo, até o SQL ser rodado. Por isso, rode o SQL **primeiro** e só depois publique.
@@ -84,7 +84,7 @@ Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fa
 
 ## Confirmação antes de excluir
 
-Excluir um lançamento, meta ou desejo sempre pede confirmação antes. Não tem como apagar sem querer com um toque só.
+Excluir um lançamento ou meta sempre pede confirmação antes. Não tem como apagar sem querer com um toque só.
 
 ## Insight automático
 
@@ -92,9 +92,9 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 ## As abas
 
-**Resumo Mensal** — "quanto posso gastar hoje", saldo do mês com receitas e despesas, contas a vencer, alertas de orçamento, ranking de gastos por categoria, categorias mês a mês e evolução patrimonial.
+**Resumo Mensal** — "quanto posso gastar hoje", saldo do mês com receitas e despesas, contas a vencer, alertas de orçamento e o ranking de gastos por categoria.
 
-**Lançamentos** — a lista completa, com busca e filtros por categoria, tipo e conta. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. Cada lançamento tem o ícone do que foi comprado. Daqui também sai o **Importar extrato**.
+**Lançamentos** — a lista completa, com busca e filtros por categoria, tipo e conta. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. A coluna "Pagamento" mostra só a conta ou o cartão. Cada lançamento tem o ícone do que foi comprado. Daqui também sai o **Importar extrato**.
 
 **Contas** — contas e carteiras com saldo, cartões de crédito com limite e fatura (tocar abre a tela da fatura), transferências entre contas.
 
@@ -102,15 +102,11 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 **Metas** — objetivos de economia com valor meta, valor atual, percentual concluído e prazo. Metas com menos de 30 dias restantes ficam destacadas.
 
-**Desejos** — lista de coisas que você quer comprar, com preço estimado, prioridade e link opcional (só links que começam com http:// ou https://). O topo mostra o total desejado (soma dos itens ainda não comprados).
-
-## Relatório em PDF
-
-O botão de impressora no topo gera o relatório do mês (resumo, gastos por categoria e todos os lançamentos). No navegador abre a janela de impressão para salvar em PDF; no app Android/iPhone abre o "compartilhar" do celular. Com o modo privacidade ligado, o relatório sai com os valores reais mesmo assim (ele é para você guardar), e o modo volta ao que estava.
+*Removidos:* a aba **Desejos**, os gráficos "Evolução patrimonial" e "Categorias mês a mês" e a exportação em PDF. A tabela `wishlist` continua no banco (não foi apagada), só o app deixou de usá-la; ela some junto com a conta em Excluir minha conta.
 
 ## Identidade visual
 
-Preto, branco e cinza, sem laranja: cartões de destaque pretos (no modo escuro viram claros), fundo cinza-claro e cartões brancos arredondados. Verde e vermelho aparecem só em valores positivos e negativos; as categorias têm cores próprias nos gráficos e ícones. Títulos e números em **Space Grotesk** e texto em **Work Sans**, ambas incluídas no app (`fonts/`), então o visual é o mesmo no Android, no iPhone e no computador.
+Preto, branco e cinza, sem laranja: cartões de destaque pretos (no modo escuro viram claros), fundo cinza-claro e cartões brancos arredondados. Verde e vermelho aparecem só em valores positivos e negativos; as categorias têm cores próprias no ranking e nos ícones. Títulos e números em **Space Grotesk** e texto em **Work Sans**, ambas incluídas no app (`fonts/`), então o visual é o mesmo no Android, no iPhone e no computador.
 
 O tema claro ou escuro é escolhido em **Ajustes → Aparência** e sincroniza entre os aparelhos. No celular, o fundo do modo claro alterna faixas pretas e claras.
 

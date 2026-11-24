@@ -9,8 +9,7 @@ Tudo fica em `src-app/nativo.js` e só é usado no app:
 
 - **Trava com Face ID / digital** pela biometria do próprio celular (no lugar do WebAuthn do navegador).
 - **Lembrete das 21h** como notificação local: funciona com o app fechado e sem servidor.
-- **Exportar PDF** gera o arquivo e abre o "compartilhar" do celular (salvar, WhatsApp, e-mail).
-- **Links externos** (ex.: lista de desejos) abrem no navegador do celular.
+- **Links externos** abrem no navegador do celular.
 - **Botão voltar do Android** fecha a janela aberta, volta para o Resumo ou minimiza o app.
 - **Barra de status** acompanha o tema claro/escuro; tela de abertura com a cor do app.
 

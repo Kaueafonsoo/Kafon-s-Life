@@ -6,7 +6,6 @@
    num app instalado:
      - Face ID / digital  -> biometria nativa do celular
      - lembretes das 21h  -> notificação local (funciona com o app fechado, sem servidor)
-     - exportar PDF       -> gera o arquivo e abre o "compartilhar" do celular
      - links externos     -> abrem no navegador do sistema
      - botão voltar (Android), barra de status e tela de abertura */
 
@@ -16,10 +15,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Browser } from '@capacitor/browser';
-import { Share } from '@capacitor/share';
-import { Filesystem, Directory } from '@capacitor/filesystem';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
-import html2pdf from 'html2pdf.js';
 // Mesma lógica do servidor e do Resumo: o aviso é igual no push, no lembrete local e na tela.
 import { planejarLembretes } from '../api/_planejar.js';
 
@@ -189,54 +185,6 @@ if (Capacitor.isNativePlatform()) {
   };
 
   window.removerInscricaoAoSair = cancelarLembretes;
-
-  /* ---------- PDF: gera o arquivo e abre o "compartilhar" ---------- */
-  const estiloPdf = document.createElement('style');
-  estiloPdf.textContent = `
-    .pdf-nativo { position: fixed; left: -10000px; top: 0; width: 760px; background: #fff; padding: 32px; color: #0B0B0B; font-family: var(--font); }
-    .pdf-nativo .print-header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #0B0B0B; padding-bottom: 12px; margin-bottom: 20px; }
-    .pdf-nativo .print-brand { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; }
-    .pdf-nativo .print-header h1 { font-family: var(--font-display); font-size: 20px; margin: 0; }
-    .pdf-nativo .print-summary { display: flex; gap: 32px; margin-bottom: 24px; }
-    .pdf-nativo .print-summary div { display: flex; flex-direction: column; gap: 3px; }
-    .pdf-nativo .print-summary span { font-size: 11px; color: #57554C; text-transform: uppercase; letter-spacing: 0.04em; }
-    .pdf-nativo .print-summary strong { font-family: var(--font-display); font-size: 17px; }
-    .pdf-nativo section { margin-bottom: 22px; }
-    .pdf-nativo h2 { font-family: var(--font-display); font-size: 13px; margin: 0 0 10px; }
-    .pdf-nativo table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-    .pdf-nativo th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: #57554C; padding: 5px 8px; border-bottom: 1px solid #ccc; }
-    .pdf-nativo td { padding: 5px 8px; border-bottom: 1px solid #e4e2dc; }
-    .pdf-nativo th:last-child, .pdf-nativo td:last-child { text-align: right; }
-    .pdf-nativo tr { page-break-inside: avoid; }
-    .pdf-nativo .print-valor.receita { color: #0d6b3f; }
-    .pdf-nativo .print-valor.despesa { color: #a3251d; }
-    .pdf-nativo .print-footer { margin-top: 24px; font-size: 10px; color: #8A887F; }`;
-  document.head.appendChild(estiloPdf);
-
-  // O app.js monta o relatório em #print-report e chama window.print(). Aqui o "imprimir" vira PDF + compartilhar.
-  window.print = async function () {
-    const origem = document.getElementById('print-report');
-    const clone = document.createElement('div');
-    clone.className = 'pdf-nativo';
-    clone.innerHTML = origem.innerHTML;
-    document.body.appendChild(clone);
-    try {
-      showToast('Gerando o PDF…', 6000);
-      const titulo = (clone.querySelector('h1') || {}).textContent || 'relatorio';
-      const nomeArquivo = `GRANA - ${titulo}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
-      const dataUri = await html2pdf()
-        .set({ margin: 10, filename: nomeArquivo, html2canvas: { scale: 2, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4' }, pagebreak: { mode: ['css', 'legacy'] } })
-        .from(clone)
-        .outputPdf('datauristring');
-      const base64 = dataUri.split(',')[1];
-      const arquivo = await Filesystem.writeFile({ path: nomeArquivo, data: base64, directory: Directory.Cache });
-      await Share.share({ title: nomeArquivo, url: arquivo.uri, dialogTitle: 'Salvar ou enviar o relatório' });
-    } catch (err) {
-      if (!/cancel/i.test(String(err && err.message))) showToast('Não deu pra gerar o PDF. Tente de novo.');
-    } finally {
-      clone.remove();
-    }
-  };
 
   /* ---------- Links externos abrem no navegador do celular ---------- */
   document.addEventListener('click', (e) => {

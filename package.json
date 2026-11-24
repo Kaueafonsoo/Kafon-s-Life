@@ -19,14 +19,11 @@
     "@capacitor/browser": "^8.0.5",
     "@capacitor/cli": "^8.6.2",
     "@capacitor/core": "^8.6.2",
-    "@capacitor/filesystem": "^8.1.5",
     "@capacitor/ios": "^8.6.2",
     "@capacitor/local-notifications": "^8.3.1",
-    "@capacitor/share": "^8.0.3",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",
     "@capgo/capacitor-native-biometric": "^8.9.3",
-    "esbuild-wasm": "^0.28.2",
-    "html2pdf.js": "^0.14.0"
+    "esbuild-wasm": "^0.28.2"
   }
 }

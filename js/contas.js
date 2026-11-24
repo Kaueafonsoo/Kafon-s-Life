@@ -190,13 +190,12 @@ const ROTULO_STATUS = { paga: 'Paga', aberta: 'Aberta', fechada: 'Fechada', venc
 
 /* ---------- Peças usadas pelo formulário de lançamento ---------- */
 
-/** Texto da coluna "Pagamento" na lista de lançamentos. */
+/** Texto da coluna "Pagamento" na lista de lançamentos: só a conta ou o cartão. */
 function rotuloPagamento(l) {
   const cartao = l.cartaoId && cartaoPorId(l.cartaoId);
   if (cartao) return `Cartão ${cartao.nome}`;
   const conta = l.contaId && contaPorId(l.contaId);
-  if (conta) return `${conta.nome} · ${l.formaPagamento}`;
-  return l.formaPagamento;
+  return conta ? conta.nome : '—';
 }
 
 /** Valor do filtro "Todas as contas": '' | 'c:<id>' | 'k:<id>'. */
@@ -270,10 +269,10 @@ function lerDestinoLancamento() {
   return { contaId: null, cartaoId: null, cartao: null };
 }
 
-/** Compra no cartão não tem "forma de pagamento" nem "status" pra escolher: esconde esses campos. */
+/** Compra no cartão não tem "status" pra escolher (já nasce paga): esconde o campo. */
 function aoMudarDestinoLancamento() {
   const d = lerDestinoLancamento();
-  $id('lanc-forma-status-row').hidden = !!d.cartao;
+  $id('lanc-status-row').hidden = !!d.cartao;
   atualizarDicaFatura();
 }
 
@@ -690,7 +689,7 @@ async function salvarCartao(e) {
       state.cartoes.push(novo);
       closeModal('modal-cartao');
       // Se há compras antigas no crédito, oferece trazê-las já: reabre o cartão com essa opção à vista.
-      if (candidatosAVincular().length) {
+      if (candidatosAVincular().some(c => c.credito)) {
         showToast('Cartão criado. Achei compras antigas no crédito: veja se quer trazê-las para este cartão.', 5000);
         abrirCartaoModal(novo.id);
       } else {
