@@ -167,6 +167,20 @@
 
     <!-- RESUMO MENSAL -->
     <section class="tab-panel is-active" id="tab-resumo">
+      <div class="hoje-card" id="hoje-card" data-status="verde" hidden>
+        <div class="hoje-topo">
+          <span class="hoje-label">Quanto posso gastar hoje</span>
+          <span class="hoje-chip" id="hoje-chip">No ritmo</span>
+        </div>
+        <span class="hoje-valor" id="hoje-valor">R$ 0,00</span>
+        <span class="hoje-sub" id="hoje-sub"></span>
+        <p class="hoje-dica" id="hoje-dica"></p>
+        <details class="hoje-detalhe">
+          <summary>Como chegamos nesse valor</summary>
+          <div class="hoje-conta" id="hoje-conta"></div>
+        </details>
+      </div>
+
       <div class="cards-row">
         <div class="hero-card">
           <span class="hero-ring hero-ring-1" aria-hidden="true"></span>
@@ -192,24 +206,20 @@
         <p id="insight-texto"></p>
       </div>
 
+      <div class="vencer-card" id="vencer-card" hidden>
+        <div class="budget-alert-head">
+          <h2>Contas a vencer</h2>
+          <span class="vencer-sub" id="vencer-sub">hoje e próximos 3 dias</span>
+        </div>
+        <div class="vencer-lista" id="vencer-lista"></div>
+      </div>
+
       <div class="budget-alert-card" id="budget-alert-card" hidden>
         <div class="budget-alert-head">
           <h2>Atenção ao orçamento</h2>
           <button type="button" class="btn-link" data-tab="orcamento">Ver orçamento</button>
         </div>
         <div class="budget-alert-list" id="budget-alert-list"></div>
-      </div>
-
-      <div class="payday-card" id="payday-card" hidden>
-        <div class="payday-block">
-          <span class="payday-value" id="payday-days">—</span>
-          <span class="payday-label" id="payday-days-label">até o próximo salário</span>
-        </div>
-        <div class="payday-divider"></div>
-        <div class="payday-block">
-          <span class="payday-value" id="payday-perday">—</span>
-          <span class="payday-label">disponível por dia até lá</span>
-        </div>
       </div>
 
       <div class="charts-row">
@@ -270,6 +280,7 @@
           <option value="receita">Receita</option>
           <option value="despesa">Despesa</option>
         </select>
+        <button class="btn btn-ghost" id="btn-importar" data-recurso="import">Importar extrato</button>
         <button class="btn btn-primary" id="btn-novo-lancamento">+ Novo lançamento</button>
       </div>
 
@@ -302,7 +313,10 @@
 
       <div class="secao-head">
         <h2>Contas e carteiras</h2>
-        <button class="btn btn-primary" id="btn-nova-conta">+ Nova conta</button>
+        <div class="secao-botoes">
+          <button class="btn btn-ghost" id="btn-transferir" data-recurso="transf">Transferir</button>
+          <button class="btn btn-primary" id="btn-nova-conta">+ Nova conta</button>
+        </div>
       </div>
       <div class="contas-grid" id="contas-grid"></div>
 
@@ -311,6 +325,11 @@
         <button class="btn btn-primary" id="btn-novo-cartao">+ Novo cartão</button>
       </div>
       <div class="cartoes-grid" id="cartoes-grid"></div>
+
+      <div id="transferencias-bloco" data-recurso="transf" hidden>
+        <div class="secao-head"><h2>Transferências entre contas</h2></div>
+        <div class="transf-lista" id="transf-lista"></div>
+      </div>
 
       <details class="arquivados" id="arquivados" hidden>
         <summary id="arquivados-titulo">Arquivados</summary>
@@ -650,7 +669,7 @@
           <button type="button" class="btn btn-ghost" id="btn-lembretes-toggle">Ativar lembretes</button>
           <button type="button" class="btn btn-ghost" id="btn-lembretes-teste" hidden>Enviar teste</button>
         </div>
-        <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta vencendo, orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
+        <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
@@ -755,6 +774,94 @@
   </div>
 </div>
 
+<!-- Modal: Transferência entre contas -->
+<div class="modal-overlay" id="modal-transferencia" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-transferencia-title">Transferir entre contas</h3>
+      <button class="modal-close" data-close-modal="modal-transferencia">&times;</button>
+    </div>
+    <form id="form-transferencia">
+      <input type="hidden" id="transf-id" />
+      <div class="form-row">
+        <label for="transf-origem">De</label>
+        <select id="transf-origem" required></select>
+      </div>
+      <div class="form-row">
+        <label for="transf-destino">Para</label>
+        <select id="transf-destino" required></select>
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label for="transf-valor">Valor (R$)</label>
+          <input type="number" id="transf-valor" step="0.01" min="0.01" placeholder="0,00" required />
+        </div>
+        <div>
+          <label for="transf-data">Data</label>
+          <input type="date" id="transf-data" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="transf-descricao">Anotação (opcional)</label>
+        <input type="text" id="transf-descricao" placeholder="Ex: reserva do mês" maxlength="80" />
+      </div>
+      <span class="field-hint cartao-dica" id="transf-dica">Mover dinheiro entre as suas contas não conta como receita nem como despesa: só muda o saldo das duas.</span>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-transf" hidden>Excluir</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" data-close-modal="modal-transferencia">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Importar extrato -->
+<div class="modal-overlay" id="modal-importar" hidden>
+  <div class="modal modal-largo">
+    <div class="modal-header">
+      <h3 id="importar-titulo">Importar extrato</h3>
+      <button class="modal-close" data-close-modal="modal-importar">&times;</button>
+    </div>
+    <div class="importar-corpo" id="importar-passo1">
+      <p class="field-hint">Aceita arquivos <strong>OFX</strong> e <strong>CSV</strong> exportados pelo app ou site do seu banco. O arquivo é lido aqui no seu aparelho: nada é enviado para fora. Antes de importar, você revisa tudo.</p>
+      <div class="form-row">
+        <label for="importar-destino">Importar para</label>
+        <select id="importar-destino"></select>
+      </div>
+      <div class="form-row">
+        <label for="importar-arquivo">Arquivo do extrato</label>
+        <input type="file" id="importar-arquivo" accept=".ofx,.csv,.txt,text/csv,application/x-ofx" />
+      </div>
+      <label class="check-linha" id="importar-sinal-linha" hidden>
+        <input type="checkbox" id="importar-positivo-saida" />
+        <span>Neste arquivo, as compras aparecem como valores positivos (é assim na maioria das faturas de cartão em CSV)</span>
+      </label>
+      <div class="importar-mapa" id="importar-mapa" hidden>
+        <p class="field-hint">Não reconheci as colunas deste CSV. Diga qual é qual:</p>
+        <div class="form-row form-row-split">
+          <div><label for="mapa-data">Data</label><select id="mapa-data"></select></div>
+          <div><label for="mapa-descricao">Descrição</label><select id="mapa-descricao"></select></div>
+        </div>
+        <div class="form-row"><label for="mapa-valor">Valor</label><select id="mapa-valor"></select></div>
+        <button type="button" class="btn btn-primary" id="btn-aplicar-mapa">Usar estas colunas</button>
+      </div>
+      <p class="importar-erro" id="importar-erro" hidden></p>
+    </div>
+    <div class="importar-corpo" id="importar-passo2" hidden>
+      <div class="importar-resumo" id="importar-resumo"></div>
+      <div class="importar-lista" id="importar-lista"></div>
+      <div class="modal-actions importar-acoes">
+        <button type="button" class="btn btn-ghost" id="btn-importar-voltar">Voltar</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-primary" id="btn-importar-confirmar">Importar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Pagar fatura -->
 <div class="modal-overlay" id="modal-pagar-fatura" hidden>
   <div class="modal">
@@ -812,7 +919,10 @@
 <script src="js/supabase-config.js" defer></script>
 <script src="js/charts.js" defer></script>
 <script src="js/faturas.js" defer></script>
+<script src="js/vencimentos.js" defer></script>
 <script src="js/contas.js" defer></script>
+<script src="js/importar.js" defer></script>
+<script src="js/importar-tela.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>
 </html>

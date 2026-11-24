@@ -3,6 +3,7 @@
 
 const { faltando, criarSupabase, configurarPush, enviar } = require('./_comum');
 const { montarMensagem } = require('./_mensagem');
+const { itensAPagar, avisosDeVencimento } = require('./_dados');
 
 const FUSO = 'America/Sao_Paulo';
 
@@ -18,17 +19,23 @@ function somaDias(iso, n) {
 }
 
 async function dadosDoUsuario(supabase, userId, hoje) {
-  const amanha = somaDias(hoje, 1);
   const [ano, mes] = hoje.split('-').map(Number);
   const inicioMes = `${hoje.slice(0, 7)}-01`;
   const fimMes = `${hoje.slice(0, 7)}-${String(new Date(Date.UTC(ano, mes, 0)).getUTCDate()).padStart(2, '0')}`;
 
-  const [lancouRes, contasRes, mesRes, orcRes, cfgRes] = await Promise.all([
+  // Faturas: só as compras de cartão de faturas recentes (a mais antiga que ainda pode estar em aberto) em diante.
+  const refMinima = somaDias(hoje, -75).slice(0, 7);
+  let [lancouRes, contasRes, comprasCartaoRes, cartoesRes, faturasRes, mesRes, orcRes, cfgRes] = await Promise.all([
     supabase.from('lancamentos').select('id').eq('user_id', userId)
       .or(`data.eq.${hoje},created_at.gte.${hoje}T00:00:00-03:00`).limit(1),
-    supabase.from('lancamentos').select('descricao, data').eq('user_id', userId)
-      .eq('tipo', 'despesa').eq('status', 'pendente')
-      .gte('data', somaDias(hoje, -30)).lte('data', amanha).order('data'),
+    // contas pendentes: de 30 dias atrás até 3 dias à frente (o que o aviso precisa enxergar)
+    supabase.from('lancamentos').select('id, descricao, data, valor, tipo, status, cartao_id, fatura_ref').eq('user_id', userId)
+      .eq('tipo', 'despesa').eq('status', 'pendente').is('cartao_id', null)
+      .gte('data', somaDias(hoje, -30)).lte('data', somaDias(hoje, 3)).order('data'),
+    supabase.from('lancamentos').select('id, descricao, data, valor, tipo, status, cartao_id, fatura_ref').eq('user_id', userId)
+      .eq('tipo', 'despesa').not('cartao_id', 'is', null).gte('fatura_ref', refMinima),
+    supabase.from('cartoes').select('id, nome, melhor_dia_compra, dia_vencimento').eq('user_id', userId),
+    supabase.from('faturas').select('cartao_id, referencia').eq('user_id', userId),
     supabase.from('lancamentos').select('categoria, valor').eq('user_id', userId)
       .eq('tipo', 'despesa').gte('data', inicioMes).lte('data', fimMes),
     supabase.from('orcamentos').select('categoria, valor_planejado').eq('user_id', userId),
@@ -44,11 +51,25 @@ async function dadosDoUsuario(supabase, userId, hoje) {
     .map(o => ({ ...o, estourou: o.pct > 100 }))
     .sort((a, b) => b.pct - a.pct);
 
+  // Banco sem as colunas de cartão (schema antigo): refaz a consulta de contas pendentes sem elas, pra não perder o aviso.
+  if (contasRes.error) {
+    contasRes = await supabase.from('lancamentos').select('id, descricao, data, valor, tipo, status').eq('user_id', userId)
+      .eq('tipo', 'despesa').eq('status', 'pendente')
+      .gte('data', somaDias(hoje, -30)).lte('data', somaDias(hoje, 3)).order('data');
+  }
+  // Sem as tabelas de cartão (schema antigo), as consultas de fatura dão erro: segue só com as contas pendentes.
+  const cartaoOk = !comprasCartaoRes.error && !cartoesRes.error && !faturasRes.error;
+  const itens = itensAPagar({
+    lancamentos: [...(contasRes.data || []), ...(cartaoOk ? comprasCartaoRes.data || [] : [])],
+    cartoes: cartaoOk ? cartoesRes.data : [],
+    faturas: cartaoOk ? faturasRes.data : [],
+  });
+
   return {
     hoje,
     privacidade: !!(cfgRes.data && cfgRes.data.privacidade),
     lancouHoje: (lancouRes.data || []).length > 0,
-    contas: contasRes.data || [],
+    avisos: avisosDeVencimento(itens, hoje),
     orcamento,
   };
 }

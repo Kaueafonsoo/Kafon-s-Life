@@ -47,6 +47,32 @@ Aba **Contas** (e a tela da fatura, aberta ao tocar num cartão).
 
 **Antes de publicar esta versão no site:** rode o `supabase/schema.sql` inteiro no SQL Editor do Supabase. Ele só **adiciona** (tabelas `contas`, `cartoes`, `faturas` e três colunas em `lancamentos`), não apaga nada, e pode ser rodado várias vezes. Quem já tem lançamentos ganha uma "Conta principal" e os lançamentos antigos (menos os pagos no crédito) passam a apontar para ela. Se o site subir **antes** do SQL, nada quebra: sem as tabelas novas, a parte de contas fica escondida e o app funciona como antes.
 
+## Transferência entre contas
+
+Em **Contas → Transferir**: tira dinheiro de uma conta e põe em outra. Fica numa tabela própria (`transferencias`) e **não conta como receita nem despesa**: o Resumo e o Orçamento não mudam, só o saldo das duas contas. Dá para agendar para uma data futura (só mexe no saldo quando a data chegar), editar e excluir. Conta que tem transferência não pode ser apagada, só arquivada.
+
+## Quanto posso gastar hoje
+
+Card grande no topo do Resumo. A conta: **saldo das contas do dia a dia** (corrente, carteira e outras; poupança e investimentos ficam de fora) **− o que vence antes do próximo salário** (contas pendentes, inclusive atrasadas até 60 dias, e faturas de cartão em aberto) **÷ dias até o salário**. Conta que vence no dia do salário não entra, porque você paga com o salário novo. Sem dia de salário nos Ajustes, o período vai até o fim do mês; sem contas cadastradas, usa o saldo do mês.
+
+O número muda de cor pelo seu ritmo: **verde** se dá para manter o seu gasto diário normal (média dos últimos 30 dias, sem contar contas grandes e raras como o aluguel); **amarelo** se sobra menos que o seu ritmo; **vermelho** se as contas até o salário já passam do saldo. "Como chegamos nesse valor" mostra a conta passo a passo. A lógica está em `js/vencimentos.js`.
+
+## Importar extrato (OFX e CSV)
+
+Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fatura em CSV), o arquivo, e **revise antes de importar**. O arquivo é lido no próprio aparelho; nada é enviado para fora.
+
+- **Formatos:** OFX (inclusive o antigo, sem tags de fechamento, e em Windows-1252) e CSV de vários bancos (separador vírgula, ponto e vírgula ou tab; cabeçalho com acento; linhas de apresentação antes do cabeçalho; colunas separadas de débito e crédito). Se o cabeçalho do CSV não for reconhecido, o app pede para você dizer qual coluna é qual. Em fatura de cartão em CSV as compras vêm positivas; a opção acompanha o destino.
+- **Sem duplicar:** cada linha ganha um identificador (o do banco, ou um hash de data, valor e descrição). Reimportar o mesmo arquivo marca tudo como "já importado", e o banco recusa a repetição mesmo se dois aparelhos importarem ao mesmo tempo (índice único em `lancamentos.import_id`). Linhas com o mesmo valor e data próxima de algo que você já lançou à mão vêm como "possível duplicado", desmarcadas.
+- **Pagamento de fatura** que aparece no extrato da conta vem desmarcado: o app já registra isso em "Pagar fatura", e importar contaria duas vezes.
+- **Categoria sugerida:** primeiro pelo que você já lançou parecido, depois por palavras-chave (Uber, iFood, Netflix, farmácia...) mapeadas para os nomes das *suas* categorias, por último "Outros". Dá para trocar linha a linha. A lógica está em `js/importar.js` (`node scripts/testar-importar.js`).
+
+## Alertas de vencimento
+
+- **No Resumo:** o card **Contas a vencer** mostra o que está atrasado, vence hoje ou nos próximos 3 dias (inclusive a fatura do cartão), com "Marcar paga" ou "Ver fatura" ali mesmo.
+- **Notificação das 21h:** avisa **3 dias e 1 dia antes** do vencimento, no dia e quando atrasa, para contas pendentes e faturas de cartão em aberto (só nesses marcos, para o mesmo vencimento não virar aviso todo dia). Só envia se houver algo a dizer; com o modo privacidade ligado o texto não mostra nomes. No site vem do servidor (`api/lembretes.js`); no app Android/iPhone os próximos 7 dias já ficam agendados no aparelho (`api/_planejar.js`), então chegam mesmo sem abrir o app. As duas versões usam a mesma lógica (`js/vencimentos.js`, `api/_mensagem.js`).
+
+**Antes de publicar:** rode o `supabase/schema.sql` de novo (cria `transferencias` e a coluna `import_id`). Só adiciona; pode rodar várias vezes. Se o site subir antes, cada recurso novo simplesmente fica escondido.
+
 ## Confirmação antes de excluir
 
 Excluir um lançamento, meta ou desejo sempre pede confirmação antes. Não tem como apagar sem querer com um toque só.

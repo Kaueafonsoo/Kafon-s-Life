@@ -27,7 +27,10 @@ let state = {
   contas: [],
   cartoes: [],
   faturas: [],
+  transferencias: [],
   recursoContas: false,
+  recursoImport: false, // importar extrato precisa da coluna import_id (schema.sql) e de contas
+  recursoTransf: false, // a tabela de transferências pode faltar mesmo com contas funcionando (schema.sql ainda não rodou de novo)
 };
 
 const PRIORIDADE_ORDEM = { alta: 0, media: 1, baixa: 2 };
@@ -53,7 +56,7 @@ function rowToLancamento(r) {
   return {
     id: r.id, data: r.data, descricao: r.descricao, categoria: r.categoria,
     tipo: r.tipo, formaPagamento: r.forma_pagamento, valor: Number(r.valor), status: r.status,
-    contaId: r.conta_id || null, cartaoId: r.cartao_id || null, faturaRef: r.fatura_ref || null,
+    contaId: r.conta_id || null, cartaoId: r.cartao_id || null, faturaRef: r.fatura_ref || null, importId: r.import_id || null,
   };
 }
 
@@ -113,6 +116,11 @@ async function fetchAllData() {
   state.formasPagamento = (cfg.formas_pagamento && cfg.formas_pagamento.length) ? cfg.formas_pagamento : [...FORMAS_PADRAO];
 
   await carregarContas();
+
+  // Importar extrato precisa da coluna import_id; se o schema.sql ainda não rodou, só o botão de importar some.
+  const importRes = await supabaseClient.from('lancamentos').select('import_id').limit(1);
+  state.recursoImport = state.recursoContas && !importRes.error;
+  document.documentElement.classList.toggle('sem-import', !state.recursoImport);
 }
 
 /* ---------- Utilitários de formatação ---------- */
@@ -291,40 +299,68 @@ function initTemaToggle() {
 
 /* ---------- Contagem para o salário ---------- */
 
-function renderPayday() {
-  const card = document.getElementById('payday-card');
-  const dia = state.config.diaPagamento;
+/** Saldo em que o "quanto posso gastar" se baseia: o dinheiro do dia a dia (conta corrente, carteira, outras).
+    Poupança e investimentos ficam de fora, porque não são pra gastar. Sem contas cadastradas, usa o saldo do mês. */
+function saldoParaGastar() {
+  if (state.recursoContas) {
+    const doDiaADia = contasAtivas().filter(c => c.tipo !== 'poupanca' && c.tipo !== 'investimento');
+    return { valor: arredonda(doDiaADia.reduce((s, c) => s + saldoDaConta(c), 0)), rotulo: 'Saldo nas contas do dia a dia' };
+  }
+  const hoje = new Date();
+  return { valor: computeTotals(getLancamentosForMonth(hoje.getFullYear(), hoje.getMonth())).saldo, rotulo: 'Saldo do mês' };
+}
+
+const STATUS_HOJE = {
+  verde: { chip: 'No ritmo' },
+  amarelo: { chip: 'Atenção' },
+  vermelho: { chip: 'Sem folga' },
+};
+
+/** Card do topo do Resumo: quanto dá pra gastar por dia até o próximo salário, já separando o que vai vencer. */
+function renderQuantoPosso() {
+  const card = document.getElementById('hoje-card');
   const hoje = new Date();
   const vendoMesAtual = currentYear === hoje.getFullYear() && currentMonth === hoje.getMonth();
+  if (!vendoMesAtual) { card.hidden = true; return; }
 
-  if (!dia || dia < 1 || dia > 31 || !vendoMesAtual) { card.hidden = true; return; }
+  const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+  const base = saldoParaGastar();
+  const itens = contasAPagar({ lancamentos: state.lancamentos, cartoes: state.cartoes, faturas: state.faturas });
+  const r = quantoPossoGastar({
+    hoje: hojeIso, diaPagamento: state.config.diaPagamento, saldo: base.valor, itens,
+    mediaDiaria: mediaDiariaDeGastos(state.lancamentos, hojeIso),
+  });
 
-  // Próximo pagamento: neste mês se ainda não passou, senão no mês seguinte.
-  const diaHoje = hoje.getDate();
-  let ano = hoje.getFullYear(), mes = hoje.getMonth();
-  if (diaHoje >= dia) { mes += 1; if (mes > 11) { mes = 0; ano += 1; } }
-  const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate();
-  const proximo = new Date(ano, mes, Math.min(dia, ultimoDiaDoMes));
+  card.dataset.status = r.status;
+  document.getElementById('hoje-chip').textContent = STATUS_HOJE[r.status].chip;
+  document.getElementById('hoje-valor').textContent = formatCurrency(Math.max(r.porDia, 0));
+  const ate = r.temSalario ? `até o próximo salário (dia ${r.limite.slice(8)}/${r.limite.slice(5, 7)})` : 'até o fim do mês';
+  document.getElementById('hoje-sub').textContent = `por dia · ${r.dias === 1 ? '1 dia' : r.dias + ' dias'} ${ate}`;
 
-  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const dias = Math.round((proximo - inicioHoje) / 86400000);
+  let dica;
+  if (r.status === 'vermelho') {
+    dica = r.disponivel < 0
+      ? `As contas até lá passam do que você tem: faltam ${formatCurrency(Math.abs(r.disponivel))}. Dá para segurar os gastos e ver o que pode esperar.`
+      : 'Não sobra nada depois das contas até lá. Segure os gastos.';
+  } else if (r.status === 'amarelo') {
+    dica = `Menos que o seu ritmo normal (${formatCurrency(r.mediaDiaria)} por dia). Vale segurar um pouco.`;
+  } else {
+    dica = r.mediaDiaria > 0 ? `Dá para manter o seu ritmo normal (${formatCurrency(r.mediaDiaria)} por dia).` : 'Sobra com folga depois das contas até lá.';
+  }
+  document.getElementById('hoje-dica').textContent = dica;
 
-  const { saldo } = computeTotals(getLancamentosForMonth(currentYear, currentMonth));
-  const porDia = dias > 0 ? saldo / dias : saldo;
-
-  document.getElementById('payday-days').textContent = dias === 1 ? '1 dia' : `${dias} dias`;
-  document.getElementById('payday-days-label').textContent = 'até o próximo salário';
-
-  const perDayEl = document.getElementById('payday-perday');
-  perDayEl.textContent = formatCurrency(Math.max(porDia, 0));
-  perDayEl.classList.toggle('is-negative', saldo < 0);
-
+  const lista = r.considerados.map(i =>
+    `<div class="hoje-item"><span>${escapeHtml(i.descricao)} · vence ${i.data.slice(8)}/${i.data.slice(5, 7)}</span><span>${formatCurrency(i.valor)}</span></div>`).join('');
+  document.getElementById('hoje-conta').innerHTML = `
+    <div class="hoje-linha"><span>${base.rotulo}</span><strong>${formatCurrency(r.saldo)}</strong></div>
+    <div class="hoje-linha"><span>− Contas e faturas até lá</span><strong>${formatCurrency(r.aPagar)}</strong></div>
+    ${lista}
+    <div class="hoje-linha total"><span>= Disponível</span><strong>${formatCurrency(r.disponivel)}</strong></div>
+    <div class="hoje-linha"><span>÷ Dias</span><strong>${r.dias}</strong></div>
+    <p class="hoje-nota">Conta que vence no dia do salário não entra, porque você paga com o salário novo. Só conta pendente e fatura em aberto entram; marque as pagas como pagas para o número ficar certo.</p>`;
   card.hidden = false;
 }
 
-/* ---------- Insight automático ---------- */
-
-/** Compara o total de despesas do mês exibido com o mês anterior e aponta a categoria que mais pesou. */
 function computeInsight(year, month) {
   const atual = computeTotals(getLancamentosForMonth(year, month));
   let py = year, pm = month - 1;
@@ -632,6 +668,68 @@ function iconeCategoriaHtml(nome, descricao) {
   return `<span class="cat-ico" style="--c:${corCategoria(nome)}" aria-hidden="true"><svg viewBox="0 0 24 24">${traco}</svg></span>`;
 }
 
+/* ---------- Contas a vencer (card do Resumo) ---------- */
+
+const VENCER_DIAS = 3;      // avisa de hoje até 3 dias à frente, mais as atrasadas
+const VENCER_VISIVEIS = 5;
+
+function textoDoVencimento(faltam) {
+  if (faltam < 0) return { texto: `Atrasada há ${-faltam} ${faltam === -1 ? 'dia' : 'dias'}`, urgente: true };
+  if (faltam === 0) return { texto: 'Vence hoje', urgente: true };
+  if (faltam === 1) return { texto: 'Vence amanhã', urgente: true };
+  return { texto: `Vence em ${faltam} dias`, urgente: false };
+}
+
+/** Contas pendentes e faturas de cartão que vencem nos próximos 3 dias (ou já passaram), no topo do Resumo. */
+function renderContasAVencer() {
+  const card = document.getElementById('vencer-card');
+  const d = new Date();
+  const hojeIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const itens = contasAPagar({ lancamentos: state.lancamentos, cartoes: state.cartoes, faturas: state.faturas });
+  const proximos = vencimentosProximos(itens, hojeIso, VENCER_DIAS);
+  if (!proximos.length) { card.hidden = true; return; }
+
+  const total = arredonda(proximos.reduce((s, i) => s + i.valor, 0));
+  document.getElementById('vencer-sub').textContent = `${formatCurrency(total)} nos próximos dias`;
+  const visiveis = proximos.slice(0, VENCER_VISIVEIS);
+  document.getElementById('vencer-lista').innerHTML = visiveis.map(i => {
+    const { texto, urgente } = textoDoVencimento(i.faltam);
+    const lanc = i.tipo === 'conta' ? state.lancamentos.find(l => l.id === i.id) : null;
+    const icone = i.tipo === 'fatura'
+      ? `<span class="cat-ico" style="--c:var(--text)" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONE_CARTAO}</svg></span>`
+      : iconeCategoriaHtml(lanc ? lanc.categoria : '', i.descricao);
+    const acao = i.tipo === 'fatura'
+      ? `<button type="button" class="btn btn-ghost vencer-acao" data-vencer-fatura="${i.cartaoId}" data-ref="${i.ref}">Ver fatura</button>`
+      : `<button type="button" class="btn btn-ghost vencer-acao" data-vencer-paga="${i.id}">Marcar paga</button>`;
+    return `
+      <div class="vencer-item">
+        ${icone}
+        <div class="vencer-texto"><strong>${escapeHtml(i.descricao)}</strong><small class="${urgente ? 'urgente' : ''}">${texto} · ${i.data.slice(8)}/${i.data.slice(5, 7)}</small></div>
+        <div class="vencer-dir"><span class="vencer-valor">${formatCurrency(i.valor)}</span>${acao}</div>
+      </div>`;
+  }).join('') + (proximos.length > VENCER_VISIVEIS ? `<p class="budget-alert-more">e mais ${proximos.length - VENCER_VISIVEIS}: veja em Lançamentos e Contas</p>` : '');
+  card.hidden = false;
+}
+
+async function marcarContaComoPaga(id) {
+  const { data, error } = await supabaseClient.from('lancamentos').update({ status: 'pago' }).eq('id', id).select().single();
+  if (error) { showToast('Erro ao marcar como paga: ' + error.message); return; }
+  const idx = state.lancamentos.findIndex(l => l.id === id);
+  if (idx >= 0) state.lancamentos[idx] = rowToLancamento(data);
+  haptic();
+  showToast('Marcada como paga');
+  renderAll();
+}
+
+function initContasAVencer() {
+  document.getElementById('vencer-lista').addEventListener('click', (e) => {
+    const paga = e.target.closest('[data-vencer-paga]');
+    if (paga) { marcarContaComoPaga(paga.dataset.vencerPaga); return; }
+    const fatura = e.target.closest('[data-vencer-fatura]');
+    if (fatura) abrirFatura(fatura.dataset.vencerFatura, fatura.dataset.ref);
+  });
+}
+
 /* ---------- Alertas de orçamento ---------- */
 
 const ORCAMENTO_ALERTA_PCT = 80;
@@ -847,10 +945,11 @@ function renderResumo() {
   saldoEl.classList.toggle('negative', saldo < 0);
 
   renderInsight();
-  renderPayday();
+  renderQuantoPosso();
 
   const breakdown = computeCategoriaBreakdown(lancs);
   renderCategoriaRanking(breakdown);
+  renderContasAVencer();
   renderAlertasOrcamento();
   renderCategoriaTrendPanel();
 
@@ -1767,7 +1866,7 @@ async function atualizarLembretesUI() {
   teste.hidden = !ativo;
   hint.textContent = Notification.permission === 'denied'
     ? 'As notificações estão bloqueadas para o GRANA neste aparelho. Libere em Ajustes do aparelho → Notificações.'
-    : 'Um aviso por dia, às 21h, só quando houver algo importante: conta vencendo, orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
+    : 'Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
 }
 
 async function ativarLembretes() {
@@ -2252,6 +2351,8 @@ function init() {
   initCategoriaTrend();
   initLancamentosTab();
   initContas();
+  initContasAVencer();
+  initImportar();
   initMetasTab();
   initDesejosTab();
   initAjustes();

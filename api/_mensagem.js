@@ -1,13 +1,16 @@
 /* Monta o texto do lembrete diário. Função pura (sem rede/banco) pra poder ser testada sozinha.
+   É a MESMA usada pelo app nativo (src-app/nativo.js), então o aviso é igual no push e no lembrete local.
 
    dados = {
      hoje: 'aaaa-mm-dd',
      privacidade: boolean,
      lancouHoje: boolean,
-     contas: [{ descricao, data }],              // despesas pendentes de ontem a amanhã (e atrasadas)
-     orcamento: [{ categoria, pct, estourou }],  // categorias com 80%+ do orçamento usado
+     avisos: { atrasadas: [item], hoje: [item], antes: { 1: [item], 3: [item] } },   // de js/vencimentos.js (avisosDeVencimento)
+     orcamento: [{ categoria, pct, estourou }],                                        // categorias com 80%+ do orçamento usado
    }
-   Retorna { title, body } ou null quando não há nada útil a dizer (melhor não incomodar). */
+   item = { descricao, ... } — conta pendente ou "Fatura <cartão>".
+   Os vencimentos só avisam nos marcos de 3 dias e 1 dia antes, no dia e quando atrasam; assim o mesmo vencimento não
+   vira notificação todo dia. Retorna { title, body } ou null quando não há nada útil a dizer (melhor não incomodar). */
 
 function nomesAte(lista, max) {
   const nomes = lista.slice(0, max);
@@ -15,19 +18,22 @@ function nomesAte(lista, max) {
   return nomes.join(', ') + (resto > 0 ? ` e mais ${resto}` : '');
 }
 
-function montarMensagem({ hoje, privacidade, lancouHoje, contas, orcamento }) {
+function montarMensagem({ hoje, privacidade, lancouHoje, avisos, orcamento }) {
+  const a = avisos || { atrasadas: [], hoje: [], antes: {} };
+  const antes = a.antes || {};
   const linhas = [];
   let sensivel = false;
 
-  if (contas.length) {
+  // "vence" no singular, "vencem" no plural
+  const verbo = (lista) => (lista.length === 1 ? 'vence' : 'vencem');
+  const nomes = (lista) => nomesAte(lista.map(i => i.descricao), 2);
+  const partes = [];
+  if (a.atrasadas.length) partes.push(`em atraso: ${nomes(a.atrasadas)}`);
+  if (a.hoje.length) partes.push(`${verbo(a.hoje)} hoje: ${nomes(a.hoje)}`);
+  if ((antes[1] || []).length) partes.push(`${verbo(antes[1])} amanhã: ${nomes(antes[1])}`);
+  if ((antes[3] || []).length) partes.push(`${verbo(antes[3])} em 3 dias: ${nomes(antes[3])}`);
+  if (partes.length) {
     sensivel = true;
-    const atrasadas = contas.filter(c => c.data < hoje);
-    const hojeLista = contas.filter(c => c.data === hoje);
-    const amanha = contas.filter(c => c.data > hoje);
-    const partes = [];
-    if (atrasadas.length) partes.push(`em atraso: ${nomesAte(atrasadas.map(c => c.descricao), 2)}`);
-    if (hojeLista.length) partes.push(`vencem hoje: ${nomesAte(hojeLista.map(c => c.descricao), 2)}`);
-    if (amanha.length) partes.push(`vencem amanhã: ${nomesAte(amanha.map(c => c.descricao), 2)}`);
     linhas.push(`Contas ${partes.join(' · ')}`);
   }
 

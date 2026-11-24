@@ -20,6 +20,8 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import html2pdf from 'html2pdf.js';
+// Mesma lógica do servidor e do Resumo: o aviso é igual no push, no lembrete local e na tela.
+import { planejarLembretes } from '../api/_planejar.js';
 
 if (Capacitor.isNativePlatform()) {
   const ANDROID = Capacitor.getPlatform() === 'android';
@@ -105,84 +107,29 @@ if (Capacitor.isNativePlatform()) {
 
   /* ---------- Lembretes das 21h com notificação local ---------- */
   const LEMBRETES_KEY = 'grana_lembretes_nativo';
-  const ID_LEMBRETE = 2100;
-  const ID_TESTE = 2101;
+  const ID_LEMBRETE = 2100;          // 2100 a 2106: um por noite, nos próximos 7 dias
+  const DIAS_AGENDADOS = 7;
+  const ID_TESTE = 2199;
 
-  const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const somaDias = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return isoLocal(d); };
-
-  // Mesma regra do servidor (api/_mensagem.js): só avisa quando há algo útil.
-  function nomesAte(lista, max) {
-    const nomes = lista.slice(0, max);
-    const resto = lista.length - nomes.length;
-    return nomes.join(', ') + (resto > 0 ? ` e mais ${resto}` : '');
-  }
-  function montarMensagem({ hoje, privacidade, lancouHoje, contas, orcamento }) {
-    const linhas = [];
-    let sensivel = false;
-    if (contas.length) {
-      sensivel = true;
-      const atrasadas = contas.filter(c => c.data < hoje);
-      const hojeLista = contas.filter(c => c.data === hoje);
-      const amanha = contas.filter(c => c.data > hoje);
-      const partes = [];
-      if (atrasadas.length) partes.push(`em atraso: ${nomesAte(atrasadas.map(c => c.descricao), 2)}`);
-      if (hojeLista.length) partes.push(`vencem hoje: ${nomesAte(hojeLista.map(c => c.descricao), 2)}`);
-      if (amanha.length) partes.push(`vencem amanhã: ${nomesAte(amanha.map(c => c.descricao), 2)}`);
-      linhas.push(`Contas ${partes.join(' · ')}`);
-    }
-    if (orcamento.length) {
-      sensivel = true;
-      const itens = orcamento.slice(0, 3).map(o => o.estourou ? `${o.categoria} estourou` : `${o.categoria} em ${Math.floor(o.pct)}%`);
-      linhas.push(`Orçamento: ${itens.join(', ')}`);
-    }
-    if (!lancouHoje) linhas.push('Você ainda não lançou nada hoje.');
-    if (!linhas.length) return null;
-    if (privacidade && sensivel) {
-      const generico = ['Você tem avisos de contas ou orçamento. Abra o GRANA para ver.'];
-      if (!lancouHoje) generico.push('Você ainda não lançou nada hoje.');
-      return { title: 'GRANA', body: generico.join(' ') };
-    }
-    return { title: 'GRANA', body: linhas.join('\n') };
-  }
-
-  function dadosParaODia(hoje, assumirSemLancamento) {
-    const amanha = somaDias(hoje, 1);
-    const limiteAtraso = somaDias(hoje, -30);
-    const lancs = state.lancamentos || [];
-    const contas = lancs
-      .filter(l => l.tipo === 'despesa' && l.status === 'pendente' && l.data >= limiteAtraso && l.data <= amanha)
-      .sort((a, b) => a.data.localeCompare(b.data))
-      .map(l => ({ descricao: l.descricao, data: l.data }));
-    const prefixo = hoje.slice(0, 7);
-    const gasto = {};
-    lancs.filter(l => l.tipo === 'despesa' && l.data.startsWith(prefixo))
-      .forEach(l => { gasto[l.categoria] = (gasto[l.categoria] || 0) + Number(l.valor); });
-    const orcamento = Object.entries(state.orcamentos || {})
-      .filter(([, planejado]) => Number(planejado) > 0)
-      .map(([categoria, planejado]) => ({ categoria, pct: ((gasto[categoria] || 0) / Number(planejado)) * 100 }))
-      .filter(o => o.pct >= 80)
-      .map(o => ({ ...o, estourou: o.pct > 100 }))
-      .sort((a, b) => b.pct - a.pct);
-    const lancouHoje = !assumirSemLancamento && lancs.some(l => l.data === hoje);
-    return { hoje, privacidade: !!state.config.privacidade, lancouHoje, contas, orcamento };
-  }
+  const idsLembretes = () => Array.from({ length: DIAS_AGENDADOS }, (_, i) => ({ id: ID_LEMBRETE + i }));
 
   let timerAgendar = null;
+  /** Agenda os avisos das 21h dos próximos 7 dias (quais e com que texto: api/_planejar.js, a mesma lógica do servidor).
+      Toda vez que os dados mudam isso é refeito. */
   async function agendarLembrete() {
     if (localStorage.getItem(LEMBRETES_KEY) !== '1') return;
     try {
-      await LocalNotifications.cancel({ notifications: [{ id: ID_LEMBRETE }] });
-      const agora = new Date();
-      const alvo = new Date(agora);
-      alvo.setHours(21, 0, 0, 0);
-      let paraAmanha = false;
-      if (agora >= alvo) { alvo.setDate(alvo.getDate() + 1); paraAmanha = true; }
-      const msg = montarMensagem(dadosParaODia(isoLocal(alvo), paraAmanha));
-      if (!msg) return;
-      await LocalNotifications.schedule({
-        notifications: [{ id: ID_LEMBRETE, title: msg.title, body: msg.body, schedule: { at: alvo, allowWhileIdle: true } }],
+      await LocalNotifications.cancel({ notifications: idsLembretes() });
+      const plano = planejarLembretes({
+        agora: new Date(), dias: DIAS_AGENDADOS,
+        lancamentos: state.lancamentos || [], cartoes: state.cartoes || [], faturas: state.faturas || [],
+        orcamentos: state.orcamentos || {}, privacidade: !!state.config.privacidade,
       });
+      if (plano.length) {
+        await LocalNotifications.schedule({
+          notifications: plano.map(p => ({ id: ID_LEMBRETE + p.indice, title: p.title, body: p.body, schedule: { at: p.quando, allowWhileIdle: true } })),
+        });
+      }
     } catch { /* lembrete nunca pode travar o app */ }
   }
   function agendarEmBreve() {
@@ -214,7 +161,7 @@ if (Capacitor.isNativePlatform()) {
     teste.hidden = !ativo;
     hint.textContent = permissao === 'denied'
       ? 'As notificações estão bloqueadas para o GRANA. Libere nos Ajustes do celular → Notificações.'
-      : 'Um aviso por dia, às 21h, só quando houver algo importante: conta vencendo, orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
+      : 'Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.';
   };
 
   window.ativarLembretes = async function () {
@@ -235,7 +182,7 @@ if (Capacitor.isNativePlatform()) {
 
   async function cancelarLembretes() {
     localStorage.removeItem(LEMBRETES_KEY);
-    try { await LocalNotifications.cancel({ notifications: [{ id: ID_LEMBRETE }] }); } catch {}
+    try { await LocalNotifications.cancel({ notifications: idsLembretes() }); } catch {}
   }
 
   window.desativarLembretes = async function () {

@@ -66,6 +66,11 @@
   --chart-7: oklch(63% 0.14 100);
   --chart-8: oklch(60% 0.17 350);
 
+  /* semáforo do "Quanto posso gastar hoje" */
+  --hoje-verde: #1E7A4A; --hoje-verde-bg: #E3F2E9;
+  --hoje-amarelo: #8A6400; --hoje-amarelo-bg: #FAEFC9;
+  --hoje-vermelho: #B3322B; --hoje-vermelho-bg: #FBE3E0;
+
   --radius-sm: 12px;
   --radius: 20px;
   --radius-lg: 26px;
@@ -119,6 +124,10 @@
   --chart-7: oklch(71% 0.13 100);
   --chart-8: oklch(68% 0.16 350);
 
+  --hoje-verde: #72D69F; --hoje-verde-bg: #14291D;
+  --hoje-amarelo: #EBC95C; --hoje-amarelo-bg: #2B2510;
+  --hoje-vermelho: #FF9C94; --hoje-vermelho-bg: #2E1917;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
@@ -136,7 +145,7 @@ body {
 }
 h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; font-family: var(--font-display); }
 /* Fonte de destaque nos títulos, valores e números — o texto corrido segue na do sistema. */
-.brand-name, .stat-value, .valor-cell, .goal-pct, .goal-name, .payday-value,
+.brand-name, .stat-value, .valor-cell, .goal-pct, .goal-name, .hoje-valor,
 .budget-values strong, #month-label, .greeting {
   font-family: var(--font-display);
 }
@@ -285,25 +294,6 @@ input, select { font-family: inherit; }
 .insight-card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--primary-text); }
 .insight-card p strong { font-weight: 700; }
 
-/* ===== Contagem para o salário ===== */
-.payday-card {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 20px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
-}
-.payday-card[hidden] { display: none; }
-.payday-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.payday-value { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
-.payday-value.is-negative { color: var(--expense); }
-.payday-label { font-size: 12.5px; color: var(--text-muted); }
-.payday-divider { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
-
 .month-switcher[hidden] { display: none; }
 .month-switcher {
   display: flex;
@@ -374,6 +364,35 @@ input, select { font-family: inherit; }
   color: var(--text-muted);
 }
 .load-error p { margin: 0 0 16px; font-size: 14px; }
+
+/* ===== Quanto posso gastar hoje (topo do Resumo) ===== */
+.hoje-card[hidden] { display: none; }
+.hoje-card {
+  --cor: var(--hoje-verde); --fundo: var(--hoje-verde-bg);
+  background: var(--fundo); border-radius: var(--radius-lg); padding: 22px 24px 16px; margin-bottom: 16px;
+  display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-sm);
+  animation: hero-in .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.hoje-card[data-status="amarelo"] { --cor: var(--hoje-amarelo); --fundo: var(--hoje-amarelo-bg); }
+.hoje-card[data-status="vermelho"] { --cor: var(--hoje-vermelho); --fundo: var(--hoje-vermelho-bg); }
+.hoje-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.hoje-label { font-size: 13px; font-weight: 600; color: var(--cor); }
+.hoje-chip { font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--cor) 16%, transparent); color: var(--cor); }
+.hoje-valor { font-family: var(--font-display); font-size: 52px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; color: var(--cor); font-variant-numeric: tabular-nums; }
+.hoje-sub { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.hoje-dica { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-muted); }
+.hoje-detalhe { margin-top: 10px; border-top: 1px solid color-mix(in srgb, var(--cor) 22%, transparent); }
+.hoje-detalhe summary { cursor: pointer; padding: 10px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--cor); list-style: none; }
+.hoje-detalhe summary::-webkit-details-marker { display: none; }
+.hoje-detalhe summary::after { content: " ▾"; }
+.hoje-detalhe[open] summary::after { content: " ▴"; }
+.hoje-conta { display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px; font-size: 13px; }
+.hoje-linha { display: flex; justify-content: space-between; gap: 12px; color: var(--text); }
+.hoje-linha strong { font-variant-numeric: tabular-nums; }
+.hoje-linha.total { padding-top: 6px; margin-top: 2px; border-top: 1px dashed color-mix(in srgb, var(--cor) 35%, transparent); font-weight: 700; }
+.hoje-item { display: flex; justify-content: space-between; gap: 12px; padding-left: 12px; font-size: 12.5px; color: var(--text-muted); }
+.hoje-item span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoje-nota { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
 
 /* ===== Cartão de saldo (destaque do Resumo) ===== */
 .cards-row { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px; }
@@ -490,6 +509,23 @@ input, select { font-family: inherit; }
 .chart-wrap { display: flex; align-items: center; justify-content: center; min-height: 220px; width: 100%; }
 .chart-wrap svg { max-width: 100%; height: auto; }
 .chart-empty { color: var(--text-faint); font-size: 13.5px; padding: 40px 0; }
+
+/* Contas a vencer (Resumo) */
+.vencer-card[hidden] { display: none; }
+.vencer-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm);
+}
+.vencer-sub { font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
+.vencer-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.vencer-item:first-child { border-top: none; padding-top: 4px; }
+.vencer-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vencer-texto strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vencer-texto small { font-size: 12px; color: var(--text-muted); }
+.vencer-texto small.urgente { color: var(--hoje-vermelho); font-weight: 700; }
+.vencer-valor { font-family: var(--font-display); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vencer-dir { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.vencer-acao { padding: 7px 12px; font-size: 12.5px; flex-shrink: 0; }
 
 /* Alerta de orçamento (Resumo) */
 .budget-alert-card[hidden] { display: none; }
@@ -933,7 +969,7 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   color: var(--text-faint); width: 30px; height: 30px; border-radius: 8px;
 }
 .modal-close:hover { background: var(--surface-2); color: var(--text); }
-#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura { padding: 18px 22px 22px; }
+#form-lancamento, #form-meta, #form-desejo, #form-ajustes, #form-conta, #form-cartao, #form-pagar-fatura, #form-transferencia { padding: 18px 22px 22px; }
 .modal-confirm-body { padding: 18px 22px 22px; }
 .modal-confirm-body p { margin: 0 0 18px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
 .form-row[hidden] { display: none; }
@@ -1080,6 +1116,8 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 /* ===== Contas, cartões e fatura ===== */
 /* Sem o schema novo no Supabase, tudo que é de contas some e o app volta a ser o de antes. */
 .sem-contas [data-recurso="contas"] { display: none !important; }
+.sem-transf [data-recurso="transf"] { display: none !important; }
+.sem-import [data-recurso="import"] { display: none !important; }
 
 .secao-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -1089,6 +1127,20 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 .secao-head:first-of-type { margin-top: 0; }
 .secao-head h2 { font-size: 15px; margin: 0; }
 .secao-head .btn { padding: 8px 14px; font-size: 13px; }
+.secao-botoes { display: flex; gap: 8px; }
+
+/* Transferências entre contas */
+#transferencias-bloco[hidden] { display: none; }
+.transf-lista { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 4px 18px; }
+.transf-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); cursor: pointer; outline: none; }
+.transf-item:first-child { border-top: none; }
+.transf-ico { width: 34px; height: 34px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text); }
+.transf-ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.transf-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.transf-texto strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transf-texto small { font-size: 12px; color: var(--text-muted); }
+.transf-valor { font-family: var(--font-display); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.transf-mais { margin: 0; padding: 10px 0 12px; font-size: 12px; color: var(--text-faint); text-align: center; border-top: 1px solid var(--border); }
 
 .contas-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
 .contas-resumo-item {
@@ -1249,6 +1301,38 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 :root[data-theme="dark"] .pagar-resumo { background: #F4F1EC; color: #0B0B0B; }
 :root[data-theme="dark"] .pagar-resumo small, :root[data-theme="dark"] .pagar-resumo span { color: #6B685F; }
 
+/* Importar extrato */
+.modal.modal-largo { max-width: 760px; }
+.importar-corpo { padding: 18px 22px 22px; }
+.importar-corpo .field-hint { display: block; margin-bottom: 14px; line-height: 1.5; }
+.importar-erro { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; background: var(--expense-bg); color: var(--expense); }
+.importar-erro[hidden], .importar-mapa[hidden] { display: none; }
+.importar-mapa { margin-top: 14px; padding: 14px; background: var(--surface-2); border-radius: 14px; }
+.importar-resumo { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.imp-chip { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--surface-2); color: var(--text); }
+.imp-chip.novo { background: var(--income-bg); color: var(--income); }
+.imp-chip.aviso { background: var(--hoje-amarelo-bg); color: var(--hoje-amarelo); }
+.imp-aviso { margin: 0 0 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+.importar-lista { max-height: 52vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 14px; }
+.imp-linha { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "marca info valor" ". cat cat"; gap: 6px 12px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--border); cursor: pointer; }
+.imp-linha:first-child { border-top: none; }
+.imp-linha input[type="checkbox"] { grid-area: marca; width: 18px; height: 18px; }
+.imp-info { grid-area: info; min-width: 0; display: flex; flex-direction: column; }
+.imp-info strong { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-info small { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+.imp-valor { grid-area: valor; font-family: var(--font-display); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.imp-cat { grid-area: cat; padding: 7px 10px; font-size: 13px; }
+.imp-linha.desativada { opacity: 0.5; cursor: default; }
+.imp-linha.desativada .imp-cat { display: none; }
+.imp-linha.semelhante .imp-info small, .imp-linha.fatura .imp-info small { color: var(--hoje-amarelo); }
+.importar-acoes { margin-top: 16px; gap: 10px; }
+.importar-acoes .modal-actions-right { flex: 1; justify-content: flex-end; }
+@media (max-width: 768px) {
+  .importar-corpo { padding: 16px; }
+  .importar-lista { max-height: 46vh; }
+  .importar-acoes .btn-primary { flex: 1; }
+}
+
 /* Com 6 itens a barra de baixo fica apertada: rótulos e ícones um pouco menores */
 @media (max-width: 768px) {
   .tabbar { left: 8px; right: 8px; padding: 5px; }
@@ -1286,6 +1370,9 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
      do notch/Dynamic Island, então soma-se a área segura ao respiro do topo. */
   .content { padding: calc(18px + env(safe-area-inset-top)) 16px 120px; }
   .hero-value { font-size: 34px; }
+  .hoje-valor { font-size: 44px; }
+  .vencer-dir { flex-direction: column; align-items: flex-end; gap: 6px; }
+  .hoje-card { padding: 18px 18px 12px; }
   .hero-spark { display: none; }
   .hero-card { padding: 20px 18px; }
   .hero-chips { flex-wrap: nowrap; gap: 8px; }
@@ -1309,9 +1396,6 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
   #btn-privacidade { grid-area: olho; }
   #btn-exportar-pdf { grid-area: pdf; }
   #month-switcher { grid-area: mes; width: 100%; justify-content: space-between; }
-  .payday-card { flex-wrap: wrap; gap: 10px 16px; }
-  .payday-divider { display: none; }
-  .payday-block { flex: 1 1 45%; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .toolbar > * { width: 100%; }
 

@@ -228,6 +228,11 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Identificador da linha importada de um extrato (OFX/CSV). O índice único faz o banco barrar a mesma linha duas vezes,
+-- mesmo se dois aparelhos importarem ao mesmo tempo; lançamentos digitados à mão ficam com import_id nulo (e nulos não colidem).
+alter table lancamentos add column if not exists import_id text;
+create unique index if not exists lancamentos_import_idx on lancamentos (user_id, import_id);
+
 create index if not exists lancamentos_conta_idx on lancamentos (conta_id);
 create index if not exists lancamentos_cartao_fatura_idx on lancamentos (cartao_id, fatura_ref);
 
@@ -252,6 +257,29 @@ where l.conta_id is null
   and l.cartao_id is null
   and l.forma_pagamento !~* 'cr[eé]dito';
 
+-- ===== transferências entre contas =====
+-- Mover dinheiro de uma conta para outra NÃO é receita nem despesa: por isso fica numa tabela própria e só mexe no
+-- saldo das duas contas (o Resumo e o Orçamento não enxergam). Aditivo e seguro de rodar mais de uma vez.
+create table if not exists transferencias (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  conta_origem_id uuid not null references contas(id) on delete restrict,
+  conta_destino_id uuid not null references contas(id) on delete restrict,
+  valor numeric(12,2) not null check (valor > 0),
+  data date not null,
+  descricao text,
+  created_at timestamptz not null default now(),
+  check (conta_origem_id <> conta_destino_id)
+);
+create index if not exists transferencias_user_data_idx on transferencias (user_id, data);
+
+alter table transferencias enable row level security;
+drop policy if exists "transferencias: dono pode tudo" on transferencias;
+create policy "transferencias: dono pode tudo"
+  on transferencias for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 -- ===== sincronização em tempo real =====
 -- Liga o Realtime nas tabelas do app: uma alteração feita num aparelho aparece nos
 -- outros sem precisar recarregar a página. O bloco "exception" evita erro se
@@ -269,6 +297,7 @@ alter table config replica identity full;
 alter table contas replica identity full;
 alter table cartoes replica identity full;
 alter table faturas replica identity full;
+alter table transferencias replica identity full;
 
 do $$
 begin
@@ -315,5 +344,11 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.faturas;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.transferencias;
 exception when duplicate_object then null;
 end $$;

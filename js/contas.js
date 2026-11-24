@@ -69,6 +69,13 @@ function rowToFatura(r) {
   };
 }
 
+function rowToTransferencia(r) {
+  return {
+    id: r.id, contaOrigemId: r.conta_origem_id, contaDestinoId: r.conta_destino_id,
+    valor: Number(r.valor), data: r.data, descricao: r.descricao || '',
+  };
+}
+
 /* ---------- Carregar do Supabase ---------- */
 
 /** Busca contas, cartões e pagamentos de fatura. Se as tabelas ainda não existem (schema.sql não rodou),
@@ -91,6 +98,19 @@ async function carregarContas() {
     state.faturas = (faturaRes.data || []).map(rowToFatura);
   }
   document.documentElement.classList.toggle('sem-contas', !state.recursoContas);
+
+  // Transferências são opcionais: se a tabela ainda não existe, só o botão "Transferir" some.
+  state.transferencias = []; state.recursoTransf = false;
+  if (state.recursoContas) {
+    const transfRes = await supabaseClient.from('transferencias').select('*').order('data', { ascending: false });
+    if (!transfRes.error) {
+      state.recursoTransf = true;
+      state.transferencias = (transfRes.data || []).map(rowToTransferencia);
+    } else {
+      console.warn('Transferências indisponíveis (rode supabase/schema.sql):', transfRes.error.message);
+    }
+  }
+  document.documentElement.classList.toggle('sem-transf', !state.recursoTransf);
 }
 
 /** Todo usuário precisa de ao menos uma conta pra ligar os lançamentos. O índice único (usuário + nome) impede
@@ -127,6 +147,12 @@ function movimentoDaConta(contaId, hoje = hojeIso()) {
   for (const f of state.faturas) {
     if (f.contaId === contaId && f.pagoEm <= hoje) total -= f.valorPago;
   }
+  // Transferência: sai de uma conta e entra na outra, sem passar por receita/despesa.
+  for (const t of state.transferencias) {
+    if (t.data > hoje) continue;
+    if (t.contaOrigemId === contaId) total -= t.valor;
+    if (t.contaDestinoId === contaId) total += t.valor;
+  }
   return arredonda(total);
 }
 
@@ -135,7 +161,8 @@ function saldoDaConta(conta, hoje = hojeIso()) {
 }
 
 function contaTemMovimento(contaId) {
-  return state.lancamentos.some(l => l.contaId === contaId) || state.faturas.some(f => f.contaId === contaId);
+  return state.lancamentos.some(l => l.contaId === contaId) || state.faturas.some(f => f.contaId === contaId)
+    || state.transferencias.some(t => t.contaOrigemId === contaId || t.contaDestinoId === contaId);
 }
 
 function cartaoTemMovimento(cartaoId) {
@@ -317,6 +344,7 @@ function renderContasTudo() {
   if (!state.recursoContas) return;
   popularFiltroConta();
   renderContasTab();
+  renderTransferencias();
   renderFatura();
 }
 
@@ -392,6 +420,128 @@ function irParaLancamentosDaConta(valorFiltro) {
   $id('filter-categoria').value = '';
   $id('search-lanc').value = '';
   switchTab('lancamentos');
+}
+
+/* ---------- Transferências entre contas ---------- */
+
+const ICONE_TRANSFERENCIA = '<path d="M7 7h13l-3-3M17 17H4l3 3"/>';
+const TRANSFERENCIAS_VISIVEIS = 8;
+let editandoTransfId = null;
+
+function renderTransferencias() {
+  const bloco = $id('transferencias-bloco');
+  if (!state.recursoTransf) return;
+  const lista = [...state.transferencias].sort((a, b) => b.data.localeCompare(a.data));
+  bloco.hidden = !lista.length;
+  if (!lista.length) return;
+  const nome = (id) => { const c = contaPorId(id); return c ? c.nome : 'conta removida'; };
+  $id('transf-lista').innerHTML = lista.slice(0, TRANSFERENCIAS_VISIVEIS).map(t => `
+    <div class="transf-item" data-transf="${t.id}" tabindex="0" role="button" aria-label="Editar transferência">
+      <span class="transf-ico"><svg viewBox="0 0 24 24">${ICONE_TRANSFERENCIA}</svg></span>
+      <div class="transf-texto">
+        <strong>${escapeHtml(nome(t.contaOrigemId))} &rarr; ${escapeHtml(nome(t.contaDestinoId))}</strong>
+        <small>${formatDateDisplay(t.data)}${t.descricao ? ' · ' + escapeHtml(t.descricao) : ''}${t.data > hojeIso() ? ' · agendada' : ''}</small>
+      </div>
+      <span class="transf-valor">${formatCurrency(t.valor)}</span>
+    </div>`).join('') +
+    (lista.length > TRANSFERENCIAS_VISIVEIS ? `<p class="transf-mais">Mostrando as ${TRANSFERENCIAS_VISIVEIS} mais recentes de ${lista.length}.</p>` : '');
+}
+
+function popularSelectsTransferencia(origemSel, destinoSel) {
+  const montar = (sel, valor) => {
+    sel.innerHTML = '';
+    const ativas = contasAtivas();
+    ativas.forEach(c => sel.appendChild(new Option(`${c.nome} — saldo ${formatCurrency(saldoDaConta(c))}`, c.id)));
+    const atual = valor && contaPorId(valor);
+    if (atual && atual.arquivada) sel.appendChild(new Option(`${atual.nome} (arquivada)`, atual.id));
+    sel.value = valor && [...sel.options].some(o => o.value === valor) ? valor : (sel.options[0] ? sel.options[0].value : '');
+  };
+  montar($id('transf-origem'), origemSel);
+  montar($id('transf-destino'), destinoSel);
+}
+
+function abrirTransferenciaModal(id) {
+  if (!state.recursoTransf) return;
+  const t = id ? state.transferencias.find(x => x.id === id) : null;
+  if (!t && contasAtivas().length < 2) { showToast('Para transferir, crie pelo menos duas contas.'); return; }
+  editandoTransfId = t ? t.id : null;
+  $id('form-transferencia').reset();
+  $id('modal-transferencia-title').textContent = t ? 'Editar transferência' : 'Transferir entre contas';
+  const ativas = contasAtivas();
+  // Sugestão: da conta com mais dinheiro para a seguinte.
+  const origemPadrao = t ? t.contaOrigemId : ([...ativas].sort((a, b) => saldoDaConta(b) - saldoDaConta(a))[0] || {}).id;
+  const destinoPadrao = t ? t.contaDestinoId : (ativas.find(c => c.id !== origemPadrao) || {}).id;
+  popularSelectsTransferencia(origemPadrao, destinoPadrao);
+  $id('transf-id').value = t ? t.id : '';
+  $id('transf-valor').value = t ? t.valor : '';
+  $id('transf-data').value = t ? t.data : hojeIso();
+  $id('transf-descricao').value = t ? t.descricao : '';
+  $id('btn-excluir-transf').hidden = !t;
+  atualizarDicaTransferencia();
+  openModal('modal-transferencia');
+}
+
+/** Mostra como ficam os dois saldos depois da transferência (sem contar a própria, se estiver editando). */
+function atualizarDicaTransferencia() {
+  const dica = $id('transf-dica');
+  const origem = contaPorId($id('transf-origem').value), destino = contaPorId($id('transf-destino').value);
+  const valor = arredonda(parseFloat($id('transf-valor').value) || 0);
+  if (!origem || !destino) return;
+  if (origem.id === destino.id) { dica.textContent = 'Escolha duas contas diferentes.'; return; }
+  const data = $id('transf-data').value || hojeIso();
+  const sem = state.transferencias.filter(x => x.id !== editandoTransfId);
+  const guardadas = state.transferencias; state.transferencias = sem;
+  const so = saldoDaConta(origem, data > hojeIso() ? data : hojeIso()), sd = saldoDaConta(destino, data > hojeIso() ? data : hojeIso());
+  state.transferencias = guardadas;
+  if (!valor) { dica.textContent = 'Mover dinheiro entre as suas contas não conta como receita nem como despesa: só muda o saldo das duas.'; return; }
+  dica.textContent = `Depois: ${origem.nome} ${formatCurrency(arredonda(so - valor))}${so - valor < 0 ? ' (negativo)' : ''} · ${destino.nome} ${formatCurrency(arredonda(sd + valor))}. Não conta como receita nem despesa.`;
+}
+
+async function salvarTransferencia(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const campos = {
+    conta_origem_id: $id('transf-origem').value,
+    conta_destino_id: $id('transf-destino').value,
+    valor: arredonda(parseFloat($id('transf-valor').value) || 0),
+    data: $id('transf-data').value,
+    descricao: $id('transf-descricao').value.trim() || null,
+  };
+  if (campos.conta_origem_id === campos.conta_destino_id) { showToast('Escolha duas contas diferentes.'); return; }
+  if (!(campos.valor > 0)) { showToast('Informe um valor maior que zero.'); return; }
+  btn.disabled = true;
+  try {
+    if (editandoTransfId) {
+      const { data, error } = await supabaseClient.from('transferencias').update(campos).eq('id', editandoTransfId).select().single();
+      if (error) throw error;
+      state.transferencias[state.transferencias.findIndex(x => x.id === editandoTransfId)] = rowToTransferencia(data);
+      showToast('Transferência atualizada');
+    } else {
+      const { data, error } = await supabaseClient.from('transferencias').insert({ user_id: session.user.id, ...campos }).select().single();
+      if (error) throw error;
+      state.transferencias.push(rowToTransferencia(data));
+      showToast('Transferência feita');
+    }
+    closeModal('modal-transferencia');
+    haptic();
+    renderAll();
+  } catch (err) {
+    showToast('Erro ao salvar a transferência: ' + err.message);
+  }
+  btn.disabled = false;
+}
+
+function pedirExcluirTransferencia() {
+  const t = state.transferencias.find(x => x.id === editandoTransfId);
+  if (!t) return;
+  closeModal('modal-transferencia');
+  pedirConfirmacao(`Excluir esta transferência de ${formatCurrency(t.valor)}? O dinheiro volta para a conta de origem.`, async () => {
+    const { error } = await supabaseClient.from('transferencias').delete().eq('id', t.id);
+    if (error) { showToast('Erro ao excluir: ' + error.message); return; }
+    state.transferencias = state.transferencias.filter(x => x.id !== t.id);
+    showToast('Transferência excluída');
+    renderAll();
+  });
 }
 
 /* ---------- Conta: criar, editar, arquivar, excluir ---------- */
@@ -839,7 +989,7 @@ function atualizarLista(lista, payload, converter) {
 
 /** Encaixa as três tabelas novas no canal de tempo real que o app.js já abre. */
 function adicionarRealtimeContas(canal, filtro) {
-  return canal
+  canal = canal
     .on('postgres_changes', { event: '*', schema: 'public', table: 'contas', filter: filtro }, (p) => {
       state.contas = atualizarLista(state.contas, p, rowToConta);
       renderAll();
@@ -852,12 +1002,21 @@ function adicionarRealtimeContas(canal, filtro) {
       state.faturas = atualizarLista(state.faturas, p, rowToFatura);
       renderAll();
     });
+  return state.recursoTransf ? canal.on('postgres_changes', { event: '*', schema: 'public', table: 'transferencias', filter: filtro }, (p) => {
+    state.transferencias = atualizarLista(state.transferencias, p, rowToTransferencia);
+    renderAll();
+  }) : canal;
 }
 
 /* ---------- Ligações dos botões ---------- */
 
 function initContas() {
   $id('btn-nova-conta').addEventListener('click', () => abrirContaModal(null));
+  $id('btn-transferir').addEventListener('click', () => abrirTransferenciaModal(null));
+  $id('form-transferencia').addEventListener('submit', salvarTransferencia);
+  $id('btn-excluir-transf').addEventListener('click', pedirExcluirTransferencia);
+  ['transf-origem', 'transf-destino', 'transf-data'].forEach(id => $id(id).addEventListener('change', atualizarDicaTransferencia));
+  $id('transf-valor').addEventListener('input', atualizarDicaTransferencia);
   $id('btn-novo-cartao').addEventListener('click', () => {
     if (!contasAtivas().length) { showToast('Crie uma conta antes, para poder pagar a fatura.'); return; }
     abrirCartaoModal(null);
@@ -882,6 +1041,8 @@ function initContas() {
     if (reativarConta) { arquivarConta(reativarConta.dataset.reativarConta, false); return; }
     const reativarCartao = e.target.closest('[data-reativar-cartao]');
     if (reativarCartao) { arquivarCartao(reativarCartao.dataset.reativarCartao, false); return; }
+    const transf = e.target.closest('[data-transf]');
+    if (transf) { e.preventDefault(); abrirTransferenciaModal(transf.dataset.transf); return; }
     const cartao = e.target.closest('[data-cartao]');
     if (cartao) { e.preventDefault(); abrirFatura(cartao.dataset.cartao); return; }
     const conta = e.target.closest('[data-conta]');

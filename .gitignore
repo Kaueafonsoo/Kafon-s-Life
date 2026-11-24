@@ -16,3 +16,6 @@ segredos-vercel.txt
 
 # App nativo: a pasta www/ é gerada pelo scripts/montar-app.js
 www/
+
+# Ferramentas de teste local (Supabase de mentira em memória) — não vão para o repositório
+_teste/
