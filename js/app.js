@@ -329,6 +329,7 @@ function renderQuantoPosso() {
   const r = quantoPossoGastar({
     hoje: hojeIso, diaPagamento: state.config.diaPagamento, saldo: base.valor, itens,
     mediaDiaria: mediaDiariaDeGastos(state.lancamentos, hojeIso),
+    diasDeUso: diasDeHistorico(state.lancamentos, hojeIso),
   });
 
   card.dataset.status = r.status;
@@ -344,20 +345,38 @@ function renderQuantoPosso() {
       : 'Não sobra nada depois das contas até lá. Segure os gastos.';
   } else if (r.status === 'amarelo') {
     dica = `Menos que o seu ritmo normal (${formatCurrency(r.mediaDiaria)} por dia). Vale segurar um pouco.`;
+  } else if (r.aprendendo) {
+    dica = 'Sobra depois das contas até lá.';
   } else {
     dica = r.mediaDiaria > 0 ? `Dá para manter o seu ritmo normal (${formatCurrency(r.mediaDiaria)} por dia).` : 'Sobra com folga depois das contas até lá.';
   }
+  // Nas primeiras semanas a média do seu gasto ainda não diz muito: o amarelo fica de fora e o app avisa.
+  if (r.aprendendo) dica += ' Ainda estou aprendendo o seu ritmo de gastos; por enquanto só aviso quando falta dinheiro.';
   document.getElementById('hoje-dica').textContent = dica;
+
+  // Pendências atrasadas há muito tempo não entram na conta, mas não podem sumir da vista.
+  const antigasEl = document.getElementById('hoje-antigas');
+  if (r.antigas.length) {
+    antigasEl.textContent = `Você tem ${r.antigas.length} ${r.antigas.length === 1 ? 'conta antiga atrasada' : 'contas antigas atrasadas'} (${formatCurrency(r.totalAntigas)}) fora dessa conta. Ver`;
+    antigasEl.hidden = false;
+  } else {
+    antigasEl.hidden = true;
+  }
 
   const lista = r.considerados.map(i =>
     `<div class="hoje-item"><span>${escapeHtml(i.descricao)} · vence ${i.data.slice(8)}/${i.data.slice(5, 7)}</span><span>${formatCurrency(i.valor)}</span></div>`).join('');
+  const antigas = r.antigas.map(i => {
+    const atributo = i.tipo === 'fatura' ? `data-antiga-fatura="${i.cartaoId}" data-ref="${i.ref}"` : `data-antiga-lanc="${i.id}"`;
+    return `<button type="button" class="hoje-item antiga" ${atributo}><span>${escapeHtml(i.descricao)} · venceu ${i.data.slice(8)}/${i.data.slice(5, 7)}/${i.data.slice(0, 4)}</span><span>${formatCurrency(i.valor)}</span></button>`;
+  }).join('');
   document.getElementById('hoje-conta').innerHTML = `
     <div class="hoje-linha"><span>${base.rotulo}</span><strong>${formatCurrency(r.saldo)}</strong></div>
     <div class="hoje-linha"><span>− Contas e faturas até lá</span><strong>${formatCurrency(r.aPagar)}</strong></div>
     ${lista}
     <div class="hoje-linha total"><span>= Disponível</span><strong>${formatCurrency(r.disponivel)}</strong></div>
     <div class="hoje-linha"><span>÷ Dias</span><strong>${r.dias}</strong></div>
-    <p class="hoje-nota">Conta que vence no dia do salário não entra, porque você paga com o salário novo. Só conta pendente e fatura em aberto entram; marque as pagas como pagas para o número ficar certo.</p>`;
+    <p class="hoje-nota">Conta que vence no dia do salário não entra, porque você paga com o salário novo. Só conta pendente e fatura em aberto entram; marque as pagas como pagas para o número ficar certo.</p>
+    ${r.antigas.length ? `<div class="hoje-antigas-lista"><p class="hoje-nota"><strong>Atrasadas há mais de 60 dias (fora da conta):</strong> se já foram pagas, marque como pagas; se não valem mais, exclua.</p>${antigas}</div>` : ''}`;
   card.hidden = false;
 }
 
@@ -719,6 +738,21 @@ async function marcarContaComoPaga(id) {
   haptic();
   showToast('Marcada como paga');
   renderAll();
+}
+
+function initQuantoPosso() {
+  const detalhe = document.querySelector('.hoje-detalhe');
+  document.getElementById('hoje-antigas').addEventListener('click', () => {
+    detalhe.open = true;
+    const alvo = document.querySelector('.hoje-antigas-lista');
+    if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  document.getElementById('hoje-conta').addEventListener('click', (e) => {
+    const lanc = e.target.closest('[data-antiga-lanc]');
+    if (lanc) { openLancamentoModal(lanc.dataset.antigaLanc); return; }
+    const fatura = e.target.closest('[data-antiga-fatura]');
+    if (fatura) abrirFatura(fatura.dataset.antigaFatura, fatura.dataset.ref);
+  });
 }
 
 function initContasAVencer() {
@@ -2352,6 +2386,7 @@ function init() {
   initLancamentosTab();
   initContas();
   initContasAVencer();
+  initQuantoPosso();
   initImportar();
   initMetasTab();
   initDesejosTab();

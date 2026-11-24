@@ -393,6 +393,12 @@ input, select { font-family: inherit; }
 .hoje-item { display: flex; justify-content: space-between; gap: 12px; padding-left: 12px; font-size: 12.5px; color: var(--text-muted); }
 .hoje-item span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hoje-nota { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.hoje-antigas[hidden] { display: none; }
+.hoje-antigas { align-self: flex-start; margin-top: 4px; padding: 0; border: none; background: none; text-align: left; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.hoje-antigas:hover { color: var(--text); }
+.hoje-antigas-lista { margin-top: 8px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--cor) 35%, transparent); display: flex; flex-direction: column; gap: 4px; }
+.hoje-item.antiga { width: 100%; border: none; background: none; text-align: left; padding: 4px 0 4px 12px; font-family: inherit; cursor: pointer; border-radius: 8px; }
+.hoje-item.antiga:hover { background: color-mix(in srgb, var(--cor) 10%, transparent); color: var(--text); }
 
 /* ===== Cartão de saldo (destaque do Resumo) ===== */
 .cards-row { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px; }

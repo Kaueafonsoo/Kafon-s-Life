@@ -105,7 +105,7 @@ t('média diária ignora contas grandes e raras', () => {
   const g = (data, valor) => ({ tipo: 'despesa', data, valor });
   const lancs = [g('2026-11-20', 40), g('2026-11-18', 35), g('2026-11-15', 50), g('2026-11-12', 45), g('2026-11-03', 900) /* aluguel */, { tipo: 'receita', data: '2026-11-01', valor: 5000 }];
   const media = v.mediaDiariaDeGastos(lancs, '2026-11-24', 30);
-  assert.strictEqual(media, 5.67); // (40+35+50+45)/30, sem o aluguel nem a receita
+  assert.strictEqual(media, 7.73); // (40+35+50+45) = 170, sem o aluguel nem a receita, divididos pelos 22 dias de uso (03/11 a 24/11)
   assert.strictEqual(v.mediaDiariaDeGastos([], '2026-11-24'), 0);
 });
 
@@ -132,6 +132,42 @@ t('avisos 3 dias e 1 dia antes: só os marcos exatos, para não repetir todo dia
   const b = v.avisosDeVencimento(itens, '2026-11-25');
   assert.deepStrictEqual(b.antes[1].map(i => i.descricao), ['Em 2 dias']);
   assert.deepStrictEqual(b.antes[3].map(i => i.descricao), ['Em 4 dias']);
+});
+
+t('diasDeHistorico: do primeiro gasto até hoje, ignorando receitas e datas futuras', () => {
+  const g = (data, tipo = 'despesa') => ({ tipo, data, valor: 10 });
+  assert.strictEqual(v.diasDeHistorico([], '2026-11-24'), 0);
+  assert.strictEqual(v.diasDeHistorico([g('2026-11-24')], '2026-11-24'), 1);
+  assert.strictEqual(v.diasDeHistorico([g('2026-11-20'), g('2026-11-22')], '2026-11-24'), 5);
+  assert.strictEqual(v.diasDeHistorico([g('2026-11-01', 'receita'), g('2026-12-10')], '2026-11-24'), 0); // receita e futuro não contam
+});
+
+t('média de quem começou há pouco: divide só pelos dias que existem (não por 30)', () => {
+  const g = (data, valor) => ({ tipo: 'despesa', data, valor });
+  // 4 dias de uso, R$ 40 por dia: a média é 40, não 40*4/30
+  const lancs = [g('2026-11-21', 40), g('2026-11-22', 40), g('2026-11-23', 40), g('2026-11-24', 40)];
+  assert.strictEqual(v.mediaDiariaDeGastos(lancs, '2026-11-24', 30), 40);
+});
+
+t('poucos dias de uso: o app ainda está aprendendo e não pinta de amarelo', () => {
+  const base = { hoje: '2026-11-24', diaPagamento: 5, itens: [], saldo: 660, mediaDiaria: 80 }; // 60/dia, abaixo do ritmo de 80
+  assert.strictEqual(v.quantoPossoGastar({ ...base, diasDeUso: 5 }).status, 'verde');
+  assert.strictEqual(v.quantoPossoGastar({ ...base, diasDeUso: 5 }).aprendendo, true);
+  assert.strictEqual(v.quantoPossoGastar({ ...base, diasDeUso: 14 }).status, 'amarelo');
+  assert.strictEqual(v.quantoPossoGastar({ ...base, diasDeUso: 14 }).aprendendo, false);
+  assert.strictEqual(v.quantoPossoGastar({ ...base, diasDeUso: 3, saldo: 0 }).status, 'vermelho'); // falta dinheiro: avisa mesmo aprendendo
+});
+
+t('contas antigas atrasadas ficam fora da conta, mas vêm numa lista à parte', () => {
+  const itens = [
+    { tipo: 'conta', descricao: 'Recente', data: '2026-11-20', valor: 100 },
+    { tipo: 'conta', descricao: 'Antiga 1', data: '2026-06-01', valor: 300 },
+    { tipo: 'fatura', descricao: 'Fatura Velha', data: '2026-07-05', valor: 200.5 },
+  ];
+  const r = v.quantoPossoGastar({ hoje: '2026-11-24', diaPagamento: 5, saldo: 1000, itens });
+  assert.strictEqual(r.aPagar, 100);
+  assert.deepStrictEqual(r.antigas.map(i => i.descricao), ['Antiga 1', 'Fatura Velha']);
+  assert.strictEqual(r.totalAntigas, 500.5);
 });
 
 console.log(`\n${ok} testes passaram.`);

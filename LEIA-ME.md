@@ -55,6 +55,8 @@ Em **Contas → Transferir**: tira dinheiro de uma conta e põe em outra. Fica n
 
 Card grande no topo do Resumo. A conta: **saldo das contas do dia a dia** (corrente, carteira e outras; poupança e investimentos ficam de fora) **− o que vence antes do próximo salário** (contas pendentes, inclusive atrasadas até 60 dias, e faturas de cartão em aberto) **÷ dias até o salário**. Conta que vence no dia do salário não entra, porque você paga com o salário novo. Sem dia de salário nos Ajustes, o período vai até o fim do mês; sem contas cadastradas, usa o saldo do mês.
 
+**Nas primeiras semanas** (menos de 14 dias de uso) o app ainda não conhece o seu ritmo: o card avisa "ainda estou aprendendo o seu ritmo" e só fica verde ou vermelho (o amarelo espera). A média também divide só pelos dias que existem, não por 30. **Pendências atrasadas há mais de 60 dias** ficam fora da conta, mas aparecem num aviso discreto ("Você tem 2 contas antigas atrasadas") que abre a lista, com cada uma clicável para marcar como paga ou excluir.
+
 O número muda de cor pelo seu ritmo: **verde** se dá para manter o seu gasto diário normal (média dos últimos 30 dias, sem contar contas grandes e raras como o aluguel); **amarelo** se sobra menos que o seu ritmo; **vermelho** se as contas até o salário já passam do saldo. "Como chegamos nesse valor" mostra a conta passo a passo. A lógica está em `js/vencimentos.js`.
 
 ## Importar extrato (OFX e CSV)

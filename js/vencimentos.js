@@ -64,9 +64,21 @@
       return `${mes === 12 ? ano + 1 : ano}-${String((mes % 12) + 1).padStart(2, '0')}-01`;
     }
 
+    /** Quantos dias de uso o app já tem: do primeiro gasto lançado até hoje (inclusive). 0 se nunca lançou despesa. */
+    function diasDeHistorico(lancamentos, hojeIso) {
+      let primeiro = null;
+      for (const l of lancamentos) {
+        if (l.tipo === 'despesa' && l.data <= hojeIso && (!primeiro || l.data < primeiro)) primeiro = l.data;
+      }
+      return primeiro ? diasEntre(primeiro, hojeIso) + 1 : 0;
+    }
+
     /** Média diária dos gastos dos últimos `janela` dias, sem as contas grandes e raras (aluguel, mensalidade):
-        descarta o que passa de 3x a mediana, para o ritmo refletir o gasto do dia a dia. */
+        descarta o que passa de 3x a mediana, para o ritmo refletir o gasto do dia a dia.
+        Quem começou há pouco tem menos de `janela` dias de histórico: divide só pelos dias que existem, senão a média sairia
+        artificialmente baixa. */
     function mediaDiariaDeGastos(lancamentos, hojeIso, janela = 30) {
+      const dias = Math.max(1, Math.min(janela, diasDeHistorico(lancamentos, hojeIso)));
       const inicio = somaDiasIso(hojeIso, -janela);
       const valores = lancamentos
         .filter(l => l.tipo === 'despesa' && l.data > inicio && l.data <= hojeIso)
@@ -76,12 +88,14 @@
       const mediana = valores[Math.floor(valores.length / 2)];
       const corte = mediana * 3;
       const soma = valores.filter(v => v <= corte).reduce((s, v) => s + v, 0);
-      return arredonda(soma / janela);
+      return arredonda(soma / dias);
     }
 
     /** Quanto dá para gastar por dia até o próximo salário, já separando o que está para vencer.
         status: 'vermelho' (sem folga), 'amarelo' (folga menor que o seu ritmo normal), 'verde' (dá pra manter o ritmo). */
-    function quantoPossoGastar({ hoje, diaPagamento, saldo, itens, mediaDiaria = 0, atrasoMaximoDias = 60 }) {
+    const DIAS_PARA_CONHECER_O_RITMO = 14;
+
+    function quantoPossoGastar({ hoje, diaPagamento, saldo, itens, mediaDiaria = 0, diasDeUso = Infinity, atrasoMaximoDias = 60 }) {
       const salario = proximoPagamento(hoje, diaPagamento);
       const limite = salario || inicioDoProximoMes(hoje);
       const dias = Math.max(1, diasEntre(hoje, limite));
@@ -91,11 +105,19 @@
       const aPagar = arredonda(considerados.reduce((s, i) => s + i.valor, 0));
       const disponivel = arredonda(saldo - aPagar);
       const porDia = arredonda(disponivel / dias);
+      // Com poucos dias de uso a média ainda não diz nada sobre o seu ritmo: só vermelho (falta dinheiro) ou verde.
+      const aprendendo = diasDeUso < DIAS_PARA_CONHECER_O_RITMO;
       let status;
       if (porDia <= 0) status = 'vermelho';
-      else if (mediaDiaria > 0 && porDia < mediaDiaria) status = 'amarelo';
+      else if (!aprendendo && mediaDiaria > 0 && porDia < mediaDiaria) status = 'amarelo';
       else status = 'verde';
-      return { dias, limite, temSalario: !!salario, saldo: arredonda(saldo), aPagar, disponivel, porDia, mediaDiaria, status, considerados };
+      // Pendências atrasadas há mais tempo que o limite ficam fora da conta, mas não somem da vista.
+      const antigas = itens.filter(i => i.data < desde);
+      return {
+        dias, limite, temSalario: !!salario, saldo: arredonda(saldo), aPagar, disponivel, porDia, mediaDiaria, status, considerados,
+        aprendendo, diasDeUso: Number.isFinite(diasDeUso) ? diasDeUso : null,
+        antigas, totalAntigas: arredonda(antigas.reduce((s, i) => s + i.valor, 0)),
+      };
     }
 
     /** Vencimentos para destacar: atrasados, de hoje e dos próximos `dias` dias (usado no card do Resumo). */
@@ -119,7 +141,7 @@
       return r;
     }
 
-    return { diasEntre, somaDiasIso, contasAPagar, proximoPagamento, inicioDoProximoMes, mediaDiariaDeGastos, quantoPossoGastar, vencimentosProximos, avisosDeVencimento };
+    return { diasEntre, somaDiasIso, contasAPagar, proximoPagamento, inicioDoProximoMes, diasDeHistorico, mediaDiariaDeGastos, quantoPossoGastar, vencimentosProximos, avisosDeVencimento };
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = criar(require('./faturas.js'));
