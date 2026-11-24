@@ -1180,7 +1180,7 @@ async function onSubmitLancamento(e) {
           data: addMonthsToIso(dataBase, i),
           descricao: `${descricaoBase} (${i + 1}/${qtd})`,
           valor: valorParcela,
-          // Cada parcela cai numa fatura seguinte: a 1ª pela regra do fechamento, as outras mês a mês depois dela.
+          // Cada parcela cai numa fatura seguinte: a 1ª pela regra do melhor dia de compra, as outras mês a mês depois dela.
           ...(state.recursoContas ? { fatura_ref: destino.cartao ? faturaRefDaParcela(dataBase, destino.cartao, i) : null } : {}),
         });
       }

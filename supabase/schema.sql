@@ -171,13 +171,24 @@ create table if not exists cartoes (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   nome text not null,
   limite numeric(12,2) not null default 0 check (limite >= 0),
-  dia_fechamento int not null check (dia_fechamento between 1 and 31),
+  melhor_dia_compra int not null check (melhor_dia_compra between 1 and 31),  -- compras a partir desse dia vão para a fatura seguinte
   dia_vencimento int not null check (dia_vencimento between 1 and 31),
   conta_pagamento_id uuid references contas(id) on delete set null,
   arquivado boolean not null default false,
   created_at timestamptz not null default now()
 );
 create unique index if not exists cartoes_user_nome_idx on cartoes (user_id, lower(nome));
+
+-- Se uma versão anterior deste script já criou a tabela com "dia_fechamento", converte para "melhor dia de compra"
+-- (o melhor dia é o dia seguinte ao fechamento; fechamento 31 vira melhor dia 1). Só renomeia e converte: nada é apagado.
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cartoes' and column_name = 'dia_fechamento')
+     and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cartoes' and column_name = 'melhor_dia_compra') then
+    alter table cartoes rename column dia_fechamento to melhor_dia_compra;
+    update cartoes set melhor_dia_compra = case when melhor_dia_compra >= 31 then 1 else melhor_dia_compra + 1 end;
+  end if;
+end $$;
 
 alter table cartoes enable row level security;
 drop policy if exists "cartoes: dono pode tudo" on cartoes;

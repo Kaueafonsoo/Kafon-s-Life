@@ -57,7 +57,7 @@ function rowToConta(r) {
 function rowToCartao(r) {
   return {
     id: r.id, nome: r.nome, limite: Number(r.limite),
-    diaFechamento: r.dia_fechamento, diaVencimento: r.dia_vencimento,
+    melhorDiaCompra: r.melhor_dia_compra, diaVencimento: r.dia_vencimento,
     contaPagamentoId: r.conta_pagamento_id || null, arquivado: !!r.arquivado,
   };
 }
@@ -372,9 +372,9 @@ function renderContasTab() {
         </div>
         <div class="limite-barra"><span class="${pct >= 90 ? 'cheio' : ''}" style="width:${pct.toFixed(1)}%"></span></div>
         <div class="cartao-limite"><span>Disponível ${formatCurrency(Math.max(0, k.limite - usado))}</span><span>Limite ${formatCurrency(k.limite)}</span></div>
-        <small class="cartao-rodape">Fecha dia ${k.diaFechamento} · vence dia ${k.diaVencimento}</small>
+        <small class="cartao-rodape">Melhor dia de compra ${k.melhorDiaCompra} · vence dia ${k.diaVencimento}</small>
       </article>`;
-  }).join('') : '<p class="vazio-contas">Nenhum cartão ainda. Cadastre o limite e os dias de fechamento e vencimento para acompanhar a fatura.</p>';
+  }).join('') : '<p class="vazio-contas">Nenhum cartão ainda. Cadastre o limite, o melhor dia de compra e o vencimento para acompanhar a fatura.</p>';
 
   const arqContas = state.contas.filter(c => c.arquivada);
   const arqCartoes = state.cartoes.filter(k => k.arquivado);
@@ -502,7 +502,7 @@ function abrirCartaoModal(id) {
   $id('cartao-id').value = cartao ? cartao.id : '';
   $id('cartao-nome').value = cartao ? cartao.nome : '';
   $id('cartao-limite').value = cartao ? cartao.limite : '';
-  $id('cartao-fechamento').value = cartao ? cartao.diaFechamento : '';
+  $id('cartao-melhor-dia').value = cartao ? cartao.melhorDiaCompra : '';
   $id('cartao-vencimento').value = cartao ? cartao.diaVencimento : '';
   popularContasDoCartao(cartao ? cartao.contaPagamentoId : (contasAtivas()[0] ? contasAtivas()[0].id : ''));
   const botao = $id('btn-excluir-cartao');
@@ -513,18 +513,19 @@ function abrirCartaoModal(id) {
   openModal('modal-cartao');
 }
 
-/** Explica em palavras o que os dois dias significam, com o exemplo do mês atual. */
+/** Explica em palavras o que os dois dias significam, com o exemplo de uma compra de hoje. */
 function atualizarDicaDiasCartao() {
-  const f = parseInt($id('cartao-fechamento').value, 10);
-  const v = parseInt($id('cartao-vencimento').value, 10);
+  const melhor = parseInt($id('cartao-melhor-dia').value, 10);
+  const venc = parseInt($id('cartao-vencimento').value, 10);
   const dica = $id('cartao-dica');
-  if (!f || !v || f < 1 || f > 31 || v < 1 || v > 31) {
-    dica.textContent = 'Compras feitas até o dia do fechamento entram na fatura que fecha; depois dele, na fatura seguinte.';
+  if (!melhor || !venc || melhor < 1 || melhor > 31 || venc < 1 || venc > 31) {
+    dica.textContent = 'Compras feitas a partir do melhor dia de compra entram só na fatura seguinte. É o dado que o app do seu banco mostra com esse nome.';
     return;
   }
-  const cartao = { diaFechamento: f, diaVencimento: v };
+  const cartao = { melhorDiaCompra: melhor, diaVencimento: venc };
   const ref = faturaDaCompra(hojeIso(), cartao);
-  dica.textContent = `Uma compra de hoje entra na fatura de ${rotuloDaFatura(ref)} (fecha ${diaMes(fechamentoDaFatura(ref, cartao))}, vence ${diaMes(vencimentoDaFatura(ref, cartao))}).`;
+  dica.textContent = `Uma compra de hoje entra na fatura de ${rotuloDaFatura(ref)} (fecha ${diaMes(fechamentoDaFatura(ref, cartao))}, vence ${diaMes(vencimentoDaFatura(ref, cartao))}). ` +
+    (melhor === 1 ? 'Com melhor dia 1, a fatura fecha no último dia do mês.' : `A fatura fecha no dia ${diaDeFechamento(cartao)}, um dia antes do melhor dia.`);
 }
 
 async function salvarCartao(e) {
@@ -534,12 +535,12 @@ async function salvarCartao(e) {
   const campos = {
     nome,
     limite: arredonda(parseFloat($id('cartao-limite').value) || 0),
-    dia_fechamento: parseInt($id('cartao-fechamento').value, 10),
+    melhor_dia_compra: parseInt($id('cartao-melhor-dia').value, 10),
     dia_vencimento: parseInt($id('cartao-vencimento').value, 10),
     conta_pagamento_id: $id('cartao-conta').value || null,
   };
-  if (!(campos.dia_fechamento >= 1 && campos.dia_fechamento <= 31 && campos.dia_vencimento >= 1 && campos.dia_vencimento <= 31)) {
-    showToast('Os dias de fechamento e vencimento vão de 1 a 31.');
+  if (!(campos.melhor_dia_compra >= 1 && campos.melhor_dia_compra <= 31 && campos.dia_vencimento >= 1 && campos.dia_vencimento <= 31)) {
+    showToast('O melhor dia de compra e o vencimento vão de 1 a 31.');
     return;
   }
   if (state.cartoes.some(k => k.id !== editandoCartaoId && k.nome.toLowerCase() === nome.toLowerCase())) {
@@ -552,7 +553,7 @@ async function salvarCartao(e) {
       const { data, error } = await supabaseClient.from('cartoes').update(campos).eq('id', editandoCartaoId).select().single();
       if (error) throw error;
       state.cartoes[state.cartoes.findIndex(k => k.id === editandoCartaoId)] = rowToCartao(data);
-      // Mudar fechamento/vencimento vale só daqui pra frente: as compras já lançadas mantêm a fatura em que caíram.
+      // Mudar o melhor dia/vencimento vale só daqui pra frente: as compras já lançadas mantêm a fatura em que caíram.
       showToast('Cartão atualizado');
       closeModal('modal-cartao');
     } else {
@@ -866,7 +867,7 @@ function initContas() {
   $id('form-cartao').addEventListener('submit', salvarCartao);
   $id('btn-excluir-cartao').addEventListener('click', pedirExcluirOuArquivarCartao);
   $id('btn-vincular').addEventListener('click', vincularAntigos);
-  $id('cartao-fechamento').addEventListener('input', atualizarDicaDiasCartao);
+  $id('cartao-melhor-dia').addEventListener('input', atualizarDicaDiasCartao);
   $id('cartao-vencimento').addEventListener('input', atualizarDicaDiasCartao);
 
   const aoAtivar = (e, fn) => { if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };

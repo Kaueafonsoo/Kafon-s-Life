@@ -2,11 +2,16 @@
    Funções puras (sem tela e sem banco): dizem em qual fatura cai uma compra, quando a fatura fecha e vence.
    Usadas pelo contas.js e testadas por scripts/testar-faturas.js (node scripts/testar-faturas.js).
 
+   O cartão é descrito por dois números, exatamente os que o app do banco mostra:
+     cartao = { melhorDiaCompra, diaVencimento }
+
    Convenções:
+   - MELHOR DIA DE COMPRA: compras feitas a partir desse dia entram só na fatura SEGUINTE; as feitas antes dele
+     ainda entram na fatura que está fechando. Vale para qualquer banco (no Nubank é o próprio dia de fechamento;
+     no Inter é o dia seguinte ao fechamento). O dia em que a fatura fecha é, portanto, o dia anterior ao melhor dia
+     (melhor dia 1 = fecha no último dia do mês).
    - Uma fatura é identificada pelo MÊS DO VENCIMENTO, no formato "aaaa-mm" (a "fatura de dezembro" vence em dezembro).
-   - cartao = { diaFechamento, diaVencimento }.
-   - Compra feita até o dia do fechamento (inclusive) entra na fatura que fecha naquele mês; depois, na seguinte.
-   - O vencimento é o primeiro dia de vencimento depois do fechamento: se o dia de vencer é maior que o de fechar,
+   - O vencimento é o primeiro dia de vencer depois do fechamento: se o dia de vencer é maior que o de fechar,
      vence no mesmo mês (fecha 3, vence 10); senão, no mês seguinte (fecha 25, vence 5).
    - Dia 29, 30 ou 31 em mês mais curto vale o último dia do mês. */
 
@@ -15,6 +20,11 @@
 
   function diasNoMes(ano, mesIdx) {
     return new Date(ano, mesIdx + 1, 0).getDate();
+  }
+
+  /** Dia em que a fatura fecha, a partir do melhor dia de compra (1 = último dia do mês, representado por 31). */
+  function diaDeFechamento(cartao) {
+    return cartao.melhorDiaCompra <= 1 ? 31 : cartao.melhorDiaCompra - 1;
   }
 
   function paraIso(ano, mesIdx, dia) {
@@ -49,9 +59,10 @@
   function faturaDaCompra(dataIso, cartao) {
     const [ano, mes, dia] = dataIso.split('-').map(Number);
     const mesIdx = mes - 1;
-    const fechaNoMesDaCompra = dia <= Math.min(cartao.diaFechamento, diasNoMes(ano, mesIdx));
+    const diaFecha = diaDeFechamento(cartao);
+    const fechaNoMesDaCompra = dia <= Math.min(diaFecha, diasNoMes(ano, mesIdx));
     const fech = somaMeses(ano, mesIdx, fechaNoMesDaCompra ? 0 : 1);
-    const venceNoMesDoFechamento = cartao.diaVencimento > cartao.diaFechamento;
+    const venceNoMesDoFechamento = cartao.diaVencimento > diaFecha;
     const venc = somaMeses(fech.ano, fech.mesIdx, venceNoMesDoFechamento ? 0 : 1);
     return refDe(venc.ano, venc.mesIdx);
   }
@@ -65,9 +76,10 @@
   /** Data ISO em que a fatura fecha (a última compra que entra nela). */
   function fechamentoDaFatura(ref, cartao) {
     const { ano, mesIdx } = lerRef(ref);
-    const venceNoMesDoFechamento = cartao.diaVencimento > cartao.diaFechamento;
+    const diaFecha = diaDeFechamento(cartao);
+    const venceNoMesDoFechamento = cartao.diaVencimento > diaFecha;
     const f = somaMeses(ano, mesIdx, venceNoMesDoFechamento ? 0 : -1);
-    return paraIso(f.ano, f.mesIdx, cartao.diaFechamento);
+    return paraIso(f.ano, f.mesIdx, diaFecha);
   }
 
   /** 'paga' | 'aberta' (ainda recebe compras) | 'fechada' (aguardando pagamento) | 'vencida' */
@@ -85,7 +97,7 @@
   }
 
   const api = {
-    diasNoMes, somaMesesRef, faturaDaCompra, vencimentoDaFatura, fechamentoDaFatura, statusDaFatura, rotuloDaFatura,
+    diasNoMes, diaDeFechamento, somaMesesRef, faturaDaCompra, vencimentoDaFatura, fechamentoDaFatura, statusDaFatura, rotuloDaFatura,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

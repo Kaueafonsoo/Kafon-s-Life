@@ -721,15 +721,15 @@
       </div>
       <div class="form-row form-row-split">
         <div>
-          <label for="cartao-fechamento">Dia do fechamento</label>
-          <input type="number" id="cartao-fechamento" min="1" max="31" placeholder="Ex: 25" required />
+          <label for="cartao-melhor-dia">Melhor dia de compra</label>
+          <input type="number" id="cartao-melhor-dia" min="1" max="31" placeholder="Ex: 25" required />
         </div>
         <div>
           <label for="cartao-vencimento">Dia do vencimento</label>
           <input type="number" id="cartao-vencimento" min="1" max="31" placeholder="Ex: 5" required />
         </div>
       </div>
-      <span class="field-hint cartao-dica" id="cartao-dica">Compras feitas até o dia do fechamento entram na fatura que fecha; depois dele, na fatura seguinte.</span>
+      <span class="field-hint cartao-dica" id="cartao-dica">Compras feitas a partir do melhor dia de compra entram só na fatura seguinte. É o dado que o app do seu banco mostra com esse nome.</span>
       <div class="form-row">
         <label for="cartao-conta">Pagar a fatura com</label>
         <select id="cartao-conta"></select>
