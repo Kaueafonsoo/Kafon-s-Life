@@ -1,0 +1,10 @@
+# Arquivos do app nativo: não fazem parte do site publicado no Vercel
+android/
+ios/
+www/
+src-app/
+scripts/
+capacitor.config.json
+certs/
+segredos-vercel.txt
+*.pdf

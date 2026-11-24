@@ -1,0 +1,23 @@
+{
+  "appId": "br.com.grana.app",
+  "appName": "GRANA",
+  "webDir": "www",
+  "backgroundColor": "#FDFDFC",
+  "android": {
+    "backgroundColor": "#FDFDFC"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#FDFDFC"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#FDFDFC",
+      "showSpinner": false
+    },
+    "LocalNotifications": {
+      "iconColor": "#0B0B0B"
+    }
+  }
+}

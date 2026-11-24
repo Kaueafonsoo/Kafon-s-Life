@@ -13,3 +13,6 @@ _*.html
 node_modules/
 segredos-vercel.txt
 .env*
+
+# App nativo: a pasta www/ é gerada pelo scripts/montar-app.js
+www/
