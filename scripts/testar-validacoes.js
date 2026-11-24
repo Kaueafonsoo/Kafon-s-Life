@@ -43,4 +43,93 @@ t('dia padrão do lançamento: hoje, limitado ao último dia do mês exibido', (
   assert.strictEqual(v.diaPadraoDoMes(1, 2026, 1), 1);
 });
 
-console.log(`\n${ok} testes passaram.`);
+/* ---------- Excluir conta: a ordem das exclusões (api/excluir-conta.js) ---------- */
+
+const path = require('path');
+const comumPath = path.join(__dirname, '..', 'api', '_comum.js');
+
+/** Carrega o endpoint com um Supabase de mentira que anota cada chamada, na ordem em que acontecem. */
+function carregarEndpoint({ falharEm } = {}) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'chave-de-teste';
+  const chamadas = [];
+  const fake = {
+    auth: {
+      getUser: async (token) => (token === 'token-valido' ? { data: { user: { id: 'usuario-do-token' } }, error: null } : { data: null, error: { message: 'invalido' } }),
+      admin: { deleteUser: async (id) => { chamadas.push({ passo: 'auth.deleteUser', id }); return { error: null }; } },
+    },
+    from(tabela) {
+      return { delete() { return { eq: async (coluna, valor) => {
+        chamadas.push({ passo: tabela, coluna, valor });
+        return { error: falharEm === tabela ? { message: 'violates foreign key constraint' } : null };
+      } }; } };
+    },
+  };
+  require.cache[require.resolve(comumPath)] = { id: comumPath, filename: comumPath, loaded: true, exports: { criarSupabase: () => fake } };
+  delete require.cache[require.resolve('../api/excluir-conta.js')];
+  return { handler: require('../api/excluir-conta.js'), chamadas };
+}
+
+async function chamarEndpoint(handler, corpo = { confirmar: true }) {
+  const res = { status(c) { this.codigo = c; return this; }, json(o) { this.corpo = o; return this; }, setHeader() {}, end() { return this; } };
+  await handler({ method: 'POST', headers: { authorization: 'Bearer token-valido' }, body: corpo }, res);
+  return res;
+}
+
+async function testesAssincronos() {
+  const ta = async (nome, fn) => { await fn(); ok++; console.log('  ok  ' + nome); };
+
+  await ta('excluir conta: transferências são apagadas PRIMEIRO, e o usuário do Auth por ÚLTIMO', async () => {
+    const { handler, chamadas } = carregarEndpoint();
+    const res = await chamarEndpoint(handler);
+    assert.strictEqual(res.codigo, 200);
+    const passos = chamadas.map(c => c.passo);
+    assert.strictEqual(passos[0], 'transferencias', 'a primeira exclusão tem que ser a das transferências');
+    assert.strictEqual(passos[passos.length - 1], 'auth.deleteUser', 'o usuário do Auth só sai depois de todos os dados');
+  });
+
+  await ta('excluir conta: faturas e lançamentos saem antes de cartões e contas (filhos antes dos pais)', async () => {
+    const { handler, chamadas } = carregarEndpoint();
+    await chamarEndpoint(handler);
+    const pos = (t) => chamadas.findIndex(c => c.passo === t);
+    assert.ok(pos('transferencias') < pos('contas'), 'transferências antes das contas (a trava "restrict" aponta pra elas)');
+    assert.ok(pos('faturas') < pos('cartoes'));
+    assert.ok(pos('lancamentos') < pos('cartoes'));
+    assert.ok(pos('cartoes') < pos('contas'));
+  });
+
+  await ta('excluir conta: apaga as 10 tabelas do usuário, cada uma uma vez, só as linhas dele (id vem do token)', async () => {
+    const { handler, chamadas } = carregarEndpoint();
+    await chamarEndpoint(handler, { confirmar: true, user_id: 'OUTRA-PESSOA' });
+    const dados = chamadas.filter(c => c.passo !== 'auth.deleteUser');
+    assert.deepStrictEqual(dados.map(c => c.passo), handler.ORDEM_DE_EXCLUSAO);
+    assert.strictEqual(new Set(dados.map(c => c.passo)).size, 10);
+    assert.ok(dados.every(c => c.coluna === 'user_id' && c.valor === 'usuario-do-token'), 'cada exclusão filtra pelo usuário do token');
+    assert.strictEqual(chamadas[chamadas.length - 1].id, 'usuario-do-token');
+  });
+
+  await ta('excluir conta: se uma etapa falha, para ali e NÃO apaga o usuário do Auth (dá pra tentar de novo)', async () => {
+    const { handler, chamadas } = carregarEndpoint({ falharEm: 'contas' });
+    const erroOriginal = console.error; console.error = () => {}; // o endpoint registra a falha no log; aqui é esperado
+    let res;
+    try { res = await chamarEndpoint(handler); } finally { console.error = erroOriginal; }
+    assert.strictEqual(res.codigo, 500);
+    assert.ok(!chamadas.some(c => c.passo === 'auth.deleteUser'), 'o usuário do Auth não pode ser apagado com dados pela metade');
+    assert.ok(!chamadas.some(c => c.passo === 'orcamentos'), 'nada depois da etapa que falhou');
+  });
+
+  await ta('excluir conta: sem confirmação ou sem login, nada é apagado', async () => {
+    const { handler, chamadas } = carregarEndpoint();
+    assert.strictEqual((await chamarEndpoint(handler, {})).codigo, 400);
+    const res = { status(c) { this.codigo = c; return this; }, json(o) { this.corpo = o; return this; }, setHeader() {}, end() { return this; } };
+    await handler({ method: 'POST', headers: {}, body: { confirmar: true } }, res);
+    assert.strictEqual(res.codigo, 401);
+    assert.strictEqual(chamadas.length, 0);
+  });
+}
+
+testesAssincronos().then(() => {
+  console.log(`\n${ok} testes passaram.`);
+}).catch((erro) => {
+  console.error('\nFALHOU:', erro.message);
+  process.exit(1);
+});
