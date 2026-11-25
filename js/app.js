@@ -1368,12 +1368,16 @@ function renderMetas() {
   const today = new Date();
 
   state.metas.forEach(meta => {
+    const concluida = meta.valorMeta > 0 && meta.valorAtual >= meta.valorMeta;
     const pct = meta.valorMeta > 0 ? Math.min(100, (meta.valorAtual / meta.valorMeta) * 100) : 0;
+    // O número é arredondado para baixo, para nunca mostrar 100% antes da hora. A conta é feita em centavos inteiros:
+    // com decimais, 57 de 100 daria 56,999… e apareceria 56%.
+    const pctTexto = concluida ? 100 : (meta.valorMeta > 0 ? Math.floor(Math.round(meta.valorAtual * 100) * 100 / Math.round(meta.valorMeta * 100)) : 0);
     const deadline = new Date(meta.dataPrevista + 'T00:00:00');
     const daysLeft = Math.ceil((deadline - today) / 86400000);
     let deadlineText = '';
     let deadlineClass = '';
-    if (pct >= 100) {
+    if (concluida) {
       deadlineText = 'Meta concluída 🎉';
     } else if (daysLeft < 0) {
       deadlineText = `Prazo vencido há ${Math.abs(daysLeft)} dia(s)`;
@@ -1388,7 +1392,7 @@ function renderMetas() {
     // Quanto falta e, com o prazo em dia, quanto guardar por mês (cada 30 dias, ou pedaço disso, conta como um mês).
     const falta = meta.valorMeta - meta.valorAtual;
     let faltaText = '';
-    if (pct < 100 && falta > 0) {
+    if (!concluida && falta > 0) {
       faltaText = `Falta ${formatCurrency(falta)}`;
       if (daysLeft >= 0) faltaText += ` · guardar ${formatCurrency(falta / Math.max(1, Math.ceil(daysLeft / 30)))} por mês`;
     }
@@ -1400,7 +1404,7 @@ function renderMetas() {
       <div class="goal-header">
         <span class="goal-emoji">${escapeHtml(meta.emoji || '🎯')}</span>
         <span class="goal-name">${escapeHtml(meta.nome)}</span>
-        <span class="goal-pct">${pct.toFixed(0)}%</span>
+        <span class="goal-pct">${pctTexto}%</span>
       </div>
       <div class="goal-bar-wrap"><div class="goal-bar" style="width:${pct}%"></div></div>
       <div class="goal-values">
