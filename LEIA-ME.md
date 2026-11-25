@@ -10,7 +10,7 @@ Os dados ficam no Supabase, protegidos por login — cada conta só enxerga os p
 
 ## Comece pelos Ajustes
 
-Abra **Ajustes** (na barra lateral no computador, no rodapé da tela no celular) e preencha:
+Abra a aba **Ajustes** (a última do menu lateral no computador e da barra de baixo no celular), preencha e toque em **Salvar**:
 
 - **Seu nome** — aparece na saudação do topo, que muda conforme a hora do dia.
 - **Dia do salário** — o Resumo passa a mostrar quantos dias faltam e quanto sobra por dia até lá. Deixe vazio para esconder esse cartão.
@@ -80,7 +80,7 @@ Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fa
 - **Esqueci minha senha:** na tela de login, o link pede o e-mail e manda um link para criar uma senha nova. O link abre o GRANA direto na tela "Definir nova senha", e a pessoa só entra no app depois de salvar a senha nova. A resposta é a mesma exista ou não a conta (ninguém descobre quais e-mails estão cadastrados). Para funcionar, `https://kafon-s-life.vercel.app` precisa estar em **Supabase → Authentication → URL Configuration** (Site URL e Redirect URLs); o texto do e-mail se edita em **Authentication → Email Templates**.
 - **Excluir minha conta:** em **Ajustes → Seus dados**. Pede para digitar EXCLUIR e apaga a conta e **todos** os dados na hora, sem volta (`api/excluir-conta.js`, que usa a chave de serviço no servidor; as tabelas apagam em cascata). O app Android/iPhone chama o mesmo endereço do site.
 - **Política de Privacidade:** `privacidade.html` (publicada em `https://kafon-s-life.vercel.app/privacidade.html`), linkada no login e nos Ajustes. Ela cita o contato por chamado no GitHub; se quiser um e-mail de contato, edite a seção 9 do arquivo.
-- **Ao sair da conta**, o aparelho apaga os caches do app e as preferências de "último destino". O service worker nunca guarda respostas de outros endereços (como o Supabase), só os arquivos do próprio site.
+- **Ao sair da conta** (botão **Sair**, no final da aba Ajustes), o aparelho apaga os caches do app e as preferências de "último destino". O service worker nunca guarda respostas de outros endereços (como o Supabase), só os arquivos do próprio site.
 
 ## Confirmação antes de excluir
 
@@ -92,7 +92,7 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 ## As abas
 
-**Resumo Mensal** — "quanto posso gastar hoje", **Resultado do mês** (entrou menos saiu, não é o dinheiro das contas) com receitas e despesas, a linha "Dinheiro nas contas hoje" (o mesmo valor do "Saldo em contas" da aba Contas; toque para abrir Contas) e o "Como é calculado", contas a vencer, alertas de orçamento e o ranking de gastos por categoria.
+**Resumo Mensal** — "quanto posso gastar hoje", **Saldo do mês** (entrou - saiu, não é o dinheiro das contas) com receitas e despesas, a linha "Dinheiro nas contas hoje" (o mesmo valor do "Saldo em contas" da aba Contas; toque para abrir Contas) e o "Como é calculado", contas a vencer, alertas de orçamento e o ranking de gastos por categoria.
 
 **Lançamentos** — a lista completa, com busca e filtros por categoria, tipo e conta. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. A coluna "Pagamento" mostra só a conta ou o cartão. Cada lançamento tem o ícone do que foi comprado. Daqui também sai o **Importar extrato**. Entradas de dinheiro (receitas), importadas ou lançadas na mão, começam na categoria "Outros" (ou na última da sua lista, se não houver "Outros"); dá para trocar.
 
@@ -102,6 +102,8 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 - *Orçamento:* um cartão-resumo do mês ("R$ X de R$ Y planejados", barra de progresso e "Ainda dá para gastar R$ Z", ou "Passou R$ Z do planejado") e, abaixo, o valor planejado x gasto por categoria, com semáforo: verde (tranquilo), amarelo (a partir de 80% do planejado) e vermelho (estourou, mostrando quanto passou). Basta digitar no campo para mudar o planejado. O resumo soma só as categorias que têm valor planejado, usa os mesmos lançamentos do mês da lista, respeita o modo privacidade e some se nenhuma categoria tem planejado. Se alguma categoria já passou do planejado, uma linha vermelha logo abaixo avisa qual (até 2, depois "e mais N"), porque a soma geral pode ainda mostrar folga. Categoria sem valor planejado aparece sem barra, em cinza: "R$ X gastos · sem valor planejado". Segue o mês escolhido no topo.
 - *Metas:* objetivos de economia com valor meta, valor atual, percentual concluído e prazo (botão "+ Nova meta"). Metas com menos de 30 dias restantes ficam destacadas. Não depende do mês, então o seletor de mês some nessa parte.
+
+**Ajustes** — aparência (claro ou escuro), seu nome, dia do salário, categorias, trava rápida (Face ID/digital), lembretes e "Seus dados" (Política de Privacidade e Excluir minha conta). É uma página, não uma janela: **Salvar** grava e você continua nela; **Restaurar padrão** repõe a lista de categorias (só vale depois de salvar); o tema muda na hora. Os campos são preenchidos ao entrar na aba, então o que não foi salvo se perde ao trocar de aba. O botão **Sair** fica no final da página. Nesta aba não aparecem o seletor de mês nem o botão "+".
 
 *Removidos:* a aba **Desejos**, os gráficos "Evolução patrimonial" e "Categorias mês a mês" e a exportação em PDF. A tabela `wishlist` continua no banco (não foi apagada), só o app deixou de usá-la; ela some junto com a conta em Excluir minha conta.
 
