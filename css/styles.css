@@ -428,6 +428,22 @@ input, select { font-family: inherit; }
   letter-spacing: -0.03em; color: #fff; font-variant-numeric: tabular-nums;
 }
 .hero-value.negative { color: #FF9E9E; }
+.hero-nota { position: relative; font-size: 12.5px; line-height: 1.4; color: #A8A69E; max-width: 420px; margin-top: 2px; }
+.hero-contas {
+  position: relative; align-self: flex-start; margin-top: 10px; padding: 7px 12px; border: none; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08); color: #D9D7CF; font: inherit; font-size: 12.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-align: left;
+}
+.hero-contas:hover { background: rgba(255, 255, 255, 0.14); }
+.hero-contas strong { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hero-contas svg { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.hero-detalhe { position: relative; margin-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.12); max-width: 440px; }
+.hero-detalhe summary { cursor: pointer; padding: 10px 0 4px; font-size: 12.5px; font-weight: 600; color: #A8A69E; list-style: none; }
+.hero-detalhe summary::-webkit-details-marker { display: none; }
+.hero-detalhe summary::after { content: " ▾"; }
+.hero-detalhe[open] summary::after { content: " ▴"; }
+.hero-detalhe p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: #CFCDC5; }
+.hero-detalhe p strong { color: #fff; }
 .hero-chips { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .hero-chip {
   display: flex; align-items: center; gap: 10px;
@@ -1052,6 +1068,12 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 :root[data-theme="dark"] .hero-ring-2 { border-color: rgba(11, 11, 11, 0.04); }
 :root[data-theme="dark"] .hero-label, :root[data-theme="dark"] .hero-chip small { color: #6B685F; }
 :root[data-theme="dark"] .hero-value { color: #0B0B0B; }
+:root[data-theme="dark"] .hero-nota, :root[data-theme="dark"] .hero-detalhe summary { color: #6B685F; }
+:root[data-theme="dark"] .hero-contas { background: rgba(11, 11, 11, 0.07); color: #3D3B35; }
+:root[data-theme="dark"] .hero-contas:hover { background: rgba(11, 11, 11, 0.12); }
+:root[data-theme="dark"] .hero-contas strong, :root[data-theme="dark"] .hero-detalhe p strong { color: #0B0B0B; }
+:root[data-theme="dark"] .hero-detalhe { border-top-color: rgba(11, 11, 11, 0.14); }
+:root[data-theme="dark"] .hero-detalhe p { color: #3D3B35; }
 :root[data-theme="dark"] .hero-value.negative { color: #B23B33; }
 :root[data-theme="dark"] .hero-chip { background: rgba(11, 11, 11, 0.06); }
 :root[data-theme="dark"] .hero-chip-in svg { background: rgba(46, 125, 79, 0.16); color: #2E7D4F; }
@@ -1095,6 +1117,7 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 }
 .contas-resumo-item small { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .contas-resumo-item strong { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.contas-resumo-nota { font-size: 11.5px; color: var(--text-faint); }
 .contas-resumo-item strong.negativo, .conta-saldo.negativo { color: var(--expense); }
 
 .contas-grid, .cartoes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }

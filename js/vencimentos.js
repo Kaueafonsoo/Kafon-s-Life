@@ -24,6 +24,31 @@
       return paraIso(d);
     }
 
+    /** Data a gravar quando um lançamento passa de pendente para pago: se o vencimento ainda não chegou, vira hoje, para o
+        dinheiro sair do saldo na hora (o saldo só conta o que é pago até hoje). Vencimento de hoje ou já passado fica como está. */
+    function dataAoMarcarPaga(dataIso, hojeIso) {
+      return dataIso > hojeIso ? hojeIso : dataIso;
+    }
+
+    /** Quanto a conta se moveu até `hoje`: receitas pagas menos despesas pagas, faturas pagas e transferências, tudo com data até hoje.
+        Lançamento pendente ou com data futura ainda não mexeu no dinheiro. dados = { lancamentos, faturas, transferencias }. */
+    function movimentoDeUmaConta(contaId, { lancamentos, faturas = [], transferencias = [] }, hojeIso) {
+      let total = 0;
+      for (const l of lancamentos) {
+        if (l.contaId !== contaId || l.status !== 'pago' || l.data > hojeIso) continue;
+        total += l.tipo === 'receita' ? l.valor : -l.valor;
+      }
+      for (const f of faturas) {
+        if (f.contaId === contaId && f.pagoEm <= hojeIso) total -= f.valorPago;
+      }
+      for (const t of transferencias) {
+        if (t.data > hojeIso) continue;
+        if (t.contaOrigemId === contaId) total -= t.valor;
+        if (t.contaDestinoId === contaId) total += t.valor;
+      }
+      return arredonda(total);
+    }
+
     /** Tudo que ainda falta pagar: contas pendentes e faturas de cartão em aberto. */
     function contasAPagar({ lancamentos, cartoes, faturas }) {
       const itens = [];
@@ -141,7 +166,7 @@
       return r;
     }
 
-    return { diasEntre, somaDiasIso, contasAPagar, proximoPagamento, inicioDoProximoMes, diasDeHistorico, mediaDiariaDeGastos, quantoPossoGastar, vencimentosProximos, avisosDeVencimento };
+    return { diasEntre, somaDiasIso, dataAoMarcarPaga, movimentoDeUmaConta, contasAPagar, proximoPagamento, inicioDoProximoMes, diasDeHistorico, mediaDiariaDeGastos, quantoPossoGastar, vencimentosProximos, avisosDeVencimento };
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = criar(require('./faturas.js'));

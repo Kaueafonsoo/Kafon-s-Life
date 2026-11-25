@@ -120,25 +120,16 @@ const cartoesAtivos = () => state.cartoes.filter(c => !c.arquivado);
 /** Saldo atual: inicial + receitas pagas - despesas pagas - faturas pagas, tudo até hoje.
     Lançamento pendente ou com data futura (parcelas, recorrências) ainda não mexeu no dinheiro. */
 function movimentoDaConta(contaId, hoje = hojeIso()) {
-  let total = 0;
-  for (const l of state.lancamentos) {
-    if (l.contaId !== contaId || l.status !== 'pago' || l.data > hoje) continue;
-    total += l.tipo === 'receita' ? l.valor : -l.valor;
-  }
-  for (const f of state.faturas) {
-    if (f.contaId === contaId && f.pagoEm <= hoje) total -= f.valorPago;
-  }
-  // Transferência: sai de uma conta e entra na outra, sem passar por receita/despesa.
-  for (const t of state.transferencias) {
-    if (t.data > hoje) continue;
-    if (t.contaOrigemId === contaId) total -= t.valor;
-    if (t.contaDestinoId === contaId) total += t.valor;
-  }
-  return arredonda(total);
+  return movimentoDeUmaConta(contaId, state, hoje); // a conta em si fica em js/vencimentos.js, onde é testada
 }
 
 function saldoDaConta(conta, hoje = hojeIso()) {
   return arredonda(conta.saldoInicial + movimentoDaConta(conta.id, hoje));
+}
+
+/** Dinheiro que está nas contas hoje (todas as contas ativas). É o "Saldo em contas" da aba Contas e o "Dinheiro nas contas hoje" do Resumo. */
+function saldoTotalEmContas(hoje = hojeIso()) {
+  return arredonda(contasAtivas().reduce((s, c) => s + saldoDaConta(c, hoje), 0));
 }
 
 function contaTemMovimento(contaId) {
@@ -331,12 +322,13 @@ function renderContasTab() {
   const cartoes = cartoesAtivos();
   const hoje = hojeIso();
 
-  const saldoTotal = arredonda(ativas.reduce((s, c) => s + saldoDaConta(c, hoje), 0));
+  const saldoTotal = saldoTotalEmContas(hoje);
   const aPagar = arredonda(cartoes.reduce((s, k) => s + limiteUsado(k), 0));
   $id('contas-resumo').innerHTML = `
     <div class="contas-resumo-item">
       <small>Saldo em contas</small>
       <strong class="${saldoTotal < 0 ? 'negativo' : ''}">${formatCurrency(saldoTotal)}</strong>
+      <span class="contas-resumo-nota">Dinheiro disponível hoje</span>
     </div>
     <div class="contas-resumo-item">
       <small>A pagar nos cartões</small>

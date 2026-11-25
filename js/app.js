@@ -436,6 +436,7 @@ function switchTab(tab, sub) {
 }
 
 function initTabNav() {
+  document.getElementById('hero-contas').addEventListener('click', () => switchTab('contas'));
   document.querySelectorAll('[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn.dataset.sub));
   });
@@ -731,12 +732,18 @@ function renderContasAVencer() {
 }
 
 async function marcarContaComoPaga(id) {
-  const { data, error } = await supabaseClient.from('lancamentos').update({ status: 'pago' }).eq('id', id).select().single();
+  const atual = state.lancamentos.find(l => l.id === id);
+  // Vencimento futuro: a data passa a ser hoje, senão o dinheiro só sairia do saldo no dia do vencimento.
+  const hoje = hojeIso();
+  const novaData = atual ? dataAoMarcarPaga(atual.data, hoje) : hoje;
+  const ajustou = !!atual && novaData !== atual.data;
+  const campos = ajustou ? { status: 'pago', data: novaData } : { status: 'pago' };
+  const { data, error } = await supabaseClient.from('lancamentos').update(campos).eq('id', id).select().single();
   if (error) { showToast('Erro ao marcar como paga: ' + error.message); return; }
   const idx = state.lancamentos.findIndex(l => l.id === id);
   if (idx >= 0) state.lancamentos[idx] = rowToLancamento(data);
   haptic();
-  showToast('Marcada como paga');
+  showToast(ajustou ? 'Marcada como paga. A data virou hoje, e o valor já saiu do saldo.' : 'Marcada como paga', ajustou ? 4500 : undefined);
   renderAll();
 }
 
@@ -849,6 +856,10 @@ function renderResumo() {
   animateStatValue(saldoEl, saldo);
   saldoEl.classList.toggle('positive', saldo >= 0);
   saldoEl.classList.toggle('negative', saldo < 0);
+
+  // O resultado do mês não é o dinheiro das contas: a linha abaixo mostra os dois lado a lado (o valor é o mesmo da aba Contas).
+  document.getElementById('hero-nota').textContent = `Entrou menos saiu em ${MESES[currentMonth].toLowerCase()}. Não é o dinheiro que está nas contas.`;
+  document.getElementById('hero-contas-valor').textContent = formatCurrency(saldoTotalEmContas());
 
   renderInsight();
   renderQuantoPosso();
@@ -1131,10 +1142,16 @@ async function onSubmitLancamento(e) {
 
   const pctAntes = payloadBase.tipo === 'despesa' ? pctOrcamento(payloadBase.categoria, dataBase) : 0;
 
+  let dataAjustada = false;
   btn.disabled = true;
   try {
     if (id) {
       const payload = { ...payloadBase, data: dataBase, descricao: descricaoBase, valor: valorBase };
+      // Passou de pendente para pago com vencimento futuro: a data vira hoje, para o valor sair do saldo agora.
+      if (anterior && anterior.status === 'pendente' && payload.status === 'pago' && !destino.cartao) {
+        const hoje = hojeIso();
+        if (dataAoMarcarPaga(payload.data, hoje) !== payload.data) { payload.data = hoje; dataAjustada = true; }
+      }
       // Só recalcula a fatura se mudou o cartão ou a data; editar descrição ou valor não tira a compra da fatura em que caiu
       // (e uma parcela editada não "pula" de fatura sem querer).
       const mudou = !anterior || anterior.cartaoId !== destino.cartaoId || anterior.data !== dataBase || !anterior.faturaRef;
@@ -1143,7 +1160,7 @@ async function onSubmitLancamento(e) {
       if (error) throw error;
       const idx = state.lancamentos.findIndex(x => x.id === id);
       state.lancamentos[idx] = rowToLancamento(data);
-      showToast('Lançamento atualizado');
+      showToast(dataAjustada ? 'Lançamento pago. A data virou hoje, e o valor já saiu do saldo.' : 'Lançamento atualizado', dataAjustada ? 4500 : undefined);
     } else if (modoRepeticao === 'recorrente' && qtd > 1) {
       const serieId = crypto.randomUUID();
       const rows = [];

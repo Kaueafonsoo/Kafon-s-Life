@@ -170,4 +170,63 @@ t('contas antigas atrasadas ficam fora da conta, mas vêm numa lista à parte', 
   assert.strictEqual(r.totalAntigas, 500.5);
 });
 
+/* ---------- Marcar como paga uma conta que vence no futuro ---------- */
+
+t('dataAoMarcarPaga: vencimento futuro vira hoje; hoje ou passado fica como está', () => {
+  assert.strictEqual(v.dataAoMarcarPaga('2026-11-27', '2026-11-25'), '2026-11-25');
+  assert.strictEqual(v.dataAoMarcarPaga('2027-01-02', '2026-12-30'), '2026-12-30');
+  assert.strictEqual(v.dataAoMarcarPaga('2026-11-25', '2026-11-25'), '2026-11-25');
+  assert.strictEqual(v.dataAoMarcarPaga('2026-11-20', '2026-11-25'), '2026-11-20');
+});
+
+t('conta de R$ 150 que vence daqui a 2 dias: ao marcar paga, a conta de R$ 1.000 vai a R$ 850 e o "posso gastar" acompanha', () => {
+  const hoje = '2026-11-25';
+  const saldoInicial = 1000;
+  const pendente = conta('p1', 'Internet', '2026-11-27', 150, { contaId: 'c1' });
+  const saldo = (lancs) => saldoInicial + v.movimentoDeUmaConta('c1', { lancamentos: lancs, faturas: [], transferencias: [] }, hoje);
+  const posso = (lancs, s) => v.quantoPossoGastar({
+    hoje, diaPagamento: 5, saldo: s, itens: v.contasAPagar({ lancamentos: lancs, cartoes: [], faturas: [] }),
+  });
+
+  // antes de pagar: o dinheiro ainda está na conta, mas os 150 já estão reservados
+  assert.strictEqual(saldo([pendente]), 1000);
+  const antes = posso([pendente], saldo([pendente]));
+  assert.strictEqual(antes.disponivel, 850);
+
+  // o erro antigo: status vira pago, data continua futura -> saldo não muda E a conta some do "a vencer"
+  const comErro = { ...pendente, status: 'pago' };
+  assert.strictEqual(saldo([comErro]), 1000);
+  assert.strictEqual(posso([comErro], saldo([comErro])).disponivel, 1000); // sobe de forma errada
+
+  // o certo: a data vira hoje
+  const certo = { ...pendente, status: 'pago', data: v.dataAoMarcarPaga(pendente.data, hoje) };
+  assert.strictEqual(certo.data, hoje);
+  assert.strictEqual(saldo([certo]), 850);
+  const depois = posso([certo], saldo([certo]));
+  assert.strictEqual(depois.disponivel, 850);
+  assert.strictEqual(depois.disponivel, antes.disponivel); // pagar não muda o que sobra para gastar
+  assert.strictEqual(depois.aPagar, 0);
+  assert.strictEqual(depois.porDia, antes.porDia);
+});
+
+t('movimentoDeUmaConta: só conta o pago até hoje, mais faturas pagas e transferências', () => {
+  const hoje = '2026-11-25';
+  const dados = {
+    lancamentos: [
+      { contaId: 'c1', status: 'pago', data: '2026-11-10', tipo: 'receita', valor: 500 },
+      { contaId: 'c1', status: 'pago', data: '2026-11-12', tipo: 'despesa', valor: 120 },
+      { contaId: 'c1', status: 'pendente', data: '2026-11-13', tipo: 'despesa', valor: 999 },
+      { contaId: 'c1', status: 'pago', data: '2026-11-30', tipo: 'despesa', valor: 999 },
+      { contaId: 'c2', status: 'pago', data: '2026-11-12', tipo: 'despesa', valor: 77 },
+    ],
+    faturas: [{ contaId: 'c1', pagoEm: '2026-11-05', valorPago: 200 }, { contaId: 'c1', pagoEm: '2026-12-05', valorPago: 300 }],
+    transferencias: [
+      { data: '2026-11-15', contaOrigemId: 'c1', contaDestinoId: 'c2', valor: 50 },
+      { data: '2026-11-28', contaOrigemId: 'c1', contaDestinoId: 'c2', valor: 1000 },
+    ],
+  };
+  assert.strictEqual(v.movimentoDeUmaConta('c1', dados, hoje), 500 - 120 - 200 - 50);
+  assert.strictEqual(v.movimentoDeUmaConta('c2', dados, hoje), -77 + 50);
+});
+
 console.log(`\n${ok} testes passaram.`);

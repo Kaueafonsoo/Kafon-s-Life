@@ -70,7 +70,7 @@ Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fa
 
 ## Alertas de vencimento
 
-- **No Resumo:** o card **Contas a vencer** mostra o que está atrasado, vence hoje ou nos próximos 3 dias (inclusive a fatura do cartão), com "Marcar paga" ou "Ver fatura" ali mesmo.
+- **No Resumo:** o card **Contas a vencer** mostra o que está atrasado, vence hoje ou nos próximos 3 dias (inclusive a fatura do cartão), com "Marcar paga" ou "Ver fatura" ali mesmo. **Marcar como paga (aqui ou trocando o Status ao editar) uma conta com vencimento futuro muda a data para hoje**, para o valor sair do saldo na hora; vencimento de hoje ou já passado mantém a data. (Por isso a conta pode passar para o mês de hoje no Orçamento.)
 - **Notificação das 21h:** avisa **3 dias e 1 dia antes** do vencimento, no dia e quando atrasa, para contas pendentes e faturas de cartão em aberto (só nesses marcos, para o mesmo vencimento não virar aviso todo dia). Só envia se houver algo a dizer; com o modo privacidade ligado o texto não mostra nomes. No site vem do servidor (`api/lembretes.js`); no app Android/iPhone os próximos 7 dias já ficam agendados no aparelho (`api/_planejar.js`), então chegam mesmo sem abrir o app. As duas versões usam a mesma lógica (`js/vencimentos.js`, `api/_mensagem.js`).
 
 **Antes de publicar:** rode o `supabase/schema.sql` de novo (cria `transferencias` e a coluna `import_id`). Só adiciona; pode rodar várias vezes. Rode **antes** de publicar: o site não carrega sem as tabelas e colunas novas.
@@ -92,7 +92,7 @@ No topo do Resumo Mensal, quando há dado suficiente para comparar, aparece uma 
 
 ## As abas
 
-**Resumo Mensal** — "quanto posso gastar hoje", saldo do mês com receitas e despesas, contas a vencer, alertas de orçamento e o ranking de gastos por categoria.
+**Resumo Mensal** — "quanto posso gastar hoje", **Resultado do mês** (entrou menos saiu, não é o dinheiro das contas) com receitas e despesas, a linha "Dinheiro nas contas hoje" (o mesmo valor do "Saldo em contas" da aba Contas; toque para abrir Contas) e o "Como é calculado", contas a vencer, alertas de orçamento e o ranking de gastos por categoria.
 
 **Lançamentos** — a lista completa, com busca e filtros por categoria, tipo e conta. Clique em qualquer linha para editar; clique no cabeçalho de uma coluna para ordenar. A coluna "Pagamento" mostra só a conta ou o cartão. Cada lançamento tem o ícone do que foi comprado. Daqui também sai o **Importar extrato**.
 
