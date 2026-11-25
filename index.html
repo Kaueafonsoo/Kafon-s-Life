@@ -131,16 +131,11 @@
       <span>Planejar</span>
       <span class="nav-dot"></span>
     </button>
-    <div class="sidebar-footer">
-      <button class="nav-item nav-item-ghost btn-ajustes">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 3.68 1.65 1.65 0 009 2.17V2a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 8v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <span>Ajustes</span>
-      </button>
-      <button class="nav-item nav-item-ghost btn-sair">
-        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        <span>Sair</span>
-      </button>
-    </div>
+    <button class="nav-item" data-tab="ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 3.68 1.65 1.65 0 009 2.17V2a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 8v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Ajustes</span>
+      <span class="nav-dot"></span>
+    </button>
   </nav>
 
   <!-- Main content -->
@@ -405,10 +400,64 @@
       </div>
     </section>
 
-    <div class="data-actions">
-      <button class="btn btn-ghost btn-ajustes">Ajustes</button>
-      <button class="btn btn-ghost btn-sair">Sair</button>
-    </div>
+    <!-- AJUSTES -->
+    <section class="tab-panel" id="tab-ajustes">
+      <div class="ajustes-pagina">
+        <div class="ajustes-card">
+          <form id="form-ajustes">
+            <div class="form-row">
+              <label>Aparência</label>
+              <div class="range-toggle" id="tema-toggle">
+                <button type="button" data-tema="claro" class="is-active">Claro</button>
+                <button type="button" data-tema="escuro">Escuro</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <label for="cfg-nome">Seu nome</label>
+              <input type="text" id="cfg-nome" placeholder="Ex: Maria" />
+              <span class="field-hint">Usado na saudação do topo.</span>
+            </div>
+            <div class="form-row">
+              <label for="cfg-dia-pagamento">Dia do salário</label>
+              <input type="number" id="cfg-dia-pagamento" min="1" max="31" placeholder="5" />
+              <span class="field-hint">O Resumo mostra quantos dias faltam e quanto sobra por dia. Deixe vazio para esconder.</span>
+            </div>
+            <div class="form-row">
+              <label for="cfg-categorias">Suas categorias</label>
+              <textarea id="cfg-categorias" rows="8" spellcheck="false"></textarea>
+              <span class="field-hint">Uma por linha. Aparecem no menu de lançamentos e no orçamento.</span>
+            </div>
+            <div class="form-row" id="faceid-row" hidden>
+              <label>Trava rápida</label>
+              <button type="button" class="btn btn-ghost" id="btn-faceid-toggle">Ativar Face ID</button>
+              <span class="field-hint">Pede verificação biométrica toda vez que o app abre neste aparelho. Fica salvo só localmente — não sincroniza entre aparelhos.</span>
+            </div>
+            <div class="form-row" id="lembretes-row" hidden>
+              <label>Lembretes</label>
+              <div class="inline-actions">
+                <button type="button" class="btn btn-ghost" id="btn-lembretes-toggle">Ativar lembretes</button>
+              </div>
+              <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
+            </div>
+            <div class="form-row zona-dados">
+              <label>Seus dados</label>
+              <div class="inline-actions">
+                <a class="btn btn-ghost" href="https://kafon-s-life.vercel.app/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
+                <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-usuario">Excluir minha conta</button>
+              </div>
+              <span class="field-hint">Excluir a conta apaga para sempre todos os seus dados: lançamentos, contas, cartões, orçamentos e metas.</span>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
+              <div class="modal-actions-right">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <button type="button" class="btn ajustes-sair btn-sair">Sair</button>
+      </div>
+    </section>
   </main>
 
   <!-- Mobile bottom tab bar -->
@@ -428,6 +477,10 @@
     <button class="tabbar-item" data-tab="planejar">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>
       <span>Planejar</span>
+    </button>
+    <button class="tabbar-item" data-tab="ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008 3.68 1.65 1.65 0 009 2.17V2a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 8v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Ajustes</span>
     </button>
   </nav>
 
@@ -546,67 +599,6 @@
         <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-meta" hidden>Excluir</button>
         <div class="modal-actions-right">
           <button type="button" class="btn btn-ghost" data-close-modal="modal-meta">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Modal: Ajustes -->
-<div class="modal-overlay" id="modal-ajustes" hidden>
-  <div class="modal">
-    <div class="modal-header">
-      <h3>Ajustes</h3>
-      <button class="modal-close" data-close-modal="modal-ajustes">&times;</button>
-    </div>
-    <form id="form-ajustes">
-      <div class="form-row">
-        <label>Aparência</label>
-        <div class="range-toggle" id="tema-toggle">
-          <button type="button" data-tema="claro" class="is-active">Claro</button>
-          <button type="button" data-tema="escuro">Escuro</button>
-        </div>
-      </div>
-      <div class="form-row">
-        <label for="cfg-nome">Seu nome</label>
-        <input type="text" id="cfg-nome" placeholder="Ex: Maria" />
-        <span class="field-hint">Usado na saudação do topo.</span>
-      </div>
-      <div class="form-row">
-        <label for="cfg-dia-pagamento">Dia do salário</label>
-        <input type="number" id="cfg-dia-pagamento" min="1" max="31" placeholder="5" />
-        <span class="field-hint">O Resumo mostra quantos dias faltam e quanto sobra por dia. Deixe vazio para esconder.</span>
-      </div>
-      <div class="form-row">
-        <label for="cfg-categorias">Suas categorias</label>
-        <textarea id="cfg-categorias" rows="8" spellcheck="false"></textarea>
-        <span class="field-hint">Uma por linha. Aparecem no menu de lançamentos e no orçamento.</span>
-      </div>
-      <div class="form-row" id="faceid-row" hidden>
-        <label>Trava rápida</label>
-        <button type="button" class="btn btn-ghost" id="btn-faceid-toggle">Ativar Face ID</button>
-        <span class="field-hint">Pede verificação biométrica toda vez que o app abre neste aparelho. Fica salvo só localmente — não sincroniza entre aparelhos.</span>
-      </div>
-      <div class="form-row" id="lembretes-row" hidden>
-        <label>Lembretes</label>
-        <div class="inline-actions">
-          <button type="button" class="btn btn-ghost" id="btn-lembretes-toggle">Ativar lembretes</button>
-        </div>
-        <span class="field-hint" id="lembretes-hint">Um aviso por dia, às 21h, só quando houver algo importante: conta ou fatura do cartão vencendo (3 dias e 1 dia antes), orçamento no limite ou nenhum gasto lançado no dia. Vale só para este aparelho.</span>
-      </div>
-      <div class="form-row zona-dados">
-        <label>Seus dados</label>
-        <div class="inline-actions">
-          <a class="btn btn-ghost" href="https://kafon-s-life.vercel.app/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
-          <button type="button" class="btn btn-danger btn-ghost" id="btn-excluir-usuario">Excluir minha conta</button>
-        </div>
-        <span class="field-hint">Excluir a conta apaga para sempre todos os seus dados: lançamentos, contas, cartões, orçamentos e metas.</span>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" id="btn-restaurar-padrao">Restaurar padrão</button>
-        <div class="modal-actions-right">
-          <button type="button" class="btn btn-ghost" data-close-modal="modal-ajustes">Cancelar</button>
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </div>

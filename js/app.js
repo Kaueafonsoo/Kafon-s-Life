@@ -402,7 +402,7 @@ function renderInsight() {
 
 /* ---------- Navegação por abas ---------- */
 
-const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', planejar: 'Planejar' };
+const TAB_TITLES = { resumo: 'Resumo Mensal', lancamentos: 'Lançamentos', contas: 'Contas', fatura: 'Fatura', planejar: 'Planejar', ajustes: 'Ajustes' };
 
 /* Planejar tem duas partes: Orçamento e Metas. A última escolhida fica guardada neste aparelho (só conforto). */
 const PLANEJAR_SUB_KEY = 'grana_planejar_aba';
@@ -427,13 +427,15 @@ function mostrarPlanejarSub(sub) {
   atualizarSeletorDeMes();
 }
 
-/** O mês do topo vale para o Orçamento; Metas, Contas e Fatura não são por mês (a fatura tem a própria navegação). */
+/** O mês do topo vale para o Orçamento; Metas, Contas, Fatura e Ajustes não são por mês (a fatura tem a própria navegação). */
 function atualizarSeletorDeMes() {
-  const semMes = abaAtual === 'contas' || abaAtual === 'fatura' || (abaAtual === 'planejar' && planejarSub === 'metas');
+  const semMes = abaAtual === 'contas' || abaAtual === 'fatura' || abaAtual === 'ajustes' || (abaAtual === 'planejar' && planejarSub === 'metas');
   document.getElementById('month-switcher').hidden = semMes;
 }
 
 function switchTab(tab, sub) {
+  // Os campos são preenchidos ao entrar na aba; tocar de novo nela não apaga o que ainda não foi salvo.
+  if (tab === 'ajustes' && abaAtual !== 'ajustes') preencherAjustes();
   abaAtual = tab;
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
   document.getElementById('tab-' + tab).classList.add('is-active');
@@ -444,6 +446,8 @@ function switchTab(tab, sub) {
   document.querySelectorAll('.tabbar-item[data-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.tab === abaDoMenu));
 
   document.getElementById('page-title').textContent = TAB_TITLES[tab];
+  // Nos Ajustes o botão "+" sai da frente, para não cobrir o botão Sair.
+  document.getElementById('fab-novo-lancamento').hidden = tab === 'ajustes';
   // Em Planejar, `sub` (se vier, como no "Ver orçamento" do Resumo) escolhe a parte; sem `sub`, vale a última escolha guardada.
   if (tab === 'planejar') mostrarPlanejarSub(sub || planejarSub);
   else atualizarSeletorDeMes();
@@ -1525,7 +1529,6 @@ async function deleteMeta(id) {
 /* ---------- Ajustes ---------- */
 
 function initAjustes() {
-  document.querySelectorAll('.btn-ajustes').forEach(b => b.addEventListener('click', openAjustes));
   document.getElementById('form-ajustes').addEventListener('submit', onSubmitAjustes);
   document.getElementById('btn-restaurar-padrao').addEventListener('click', () => {
     document.getElementById('cfg-categorias').value = CATEGORIAS_PADRAO.join('\n');
@@ -1533,13 +1536,13 @@ function initAjustes() {
   });
 }
 
-function openAjustes() {
+/** Põe nos campos da aba Ajustes os valores atuais. */
+function preencherAjustes() {
   document.getElementById('cfg-nome').value = state.config.nome || '';
   document.getElementById('cfg-dia-pagamento').value = state.config.diaPagamento || '';
   document.getElementById('cfg-categorias').value = state.categorias.join('\n');
   atualizarBotaoFaceId();
   atualizarLembretesUI();
-  openModal('modal-ajustes');
 }
 
 function parseLinhas(texto) {
@@ -1582,7 +1585,7 @@ async function onSubmitAjustes(e) {
     state.categorias = data.categorias;
 
     populateCategoriaSelects();
-    closeModal('modal-ajustes');
+    preencherAjustes(); // a pessoa continua na aba: os campos passam a mostrar o que ficou salvo
     haptic();
     renderAll();
     showToast(removidas ? `Ajustes salvos. Tirei ${removidas} ${removidas === 1 ? 'item repetido' : 'itens repetidos'}.` : 'Ajustes salvos');
@@ -2143,7 +2146,6 @@ function abrirExcluirConta() {
   document.getElementById('form-excluir-usuario').reset();
   document.getElementById('excluir-erro').hidden = true;
   document.getElementById('btn-confirmar-excluir-usuario').disabled = true;
-  closeModal('modal-ajustes');
   openModal('modal-excluir-usuario');
 }
 
@@ -2220,6 +2222,8 @@ async function carregarDadosIniciais() {
   try {
     await fetchAllData();
     await garantirContaPadrao();
+    // Quem abriu os Ajustes enquanto carregava veria campos vazios (e salvaria por cima): preenche com o que chegou.
+    if (abaAtual === 'ajustes') preencherAjustes();
     aplicarTema(state.config.tema);
     localStorage.setItem(TEMA_LOCAL_KEY, state.config.tema);
     populateCategoriaSelects();
@@ -2274,7 +2278,10 @@ function aoMudarEstadoAuth(event, newSession) {
     appStarted = false;
     pararRealtime();
     showAuthScreen();
-    if (estavaLogado) limparRastrosLocais(); // saiu da conta: o aparelho não guarda nada dela
+    if (estavaLogado) {
+      limparRastrosLocais(); // saiu da conta: o aparelho não guarda nada dela
+      switchTab('resumo'); // quem entrar depois começa no Resumo, sem os campos dos Ajustes de quem saiu
+    }
   }
 }
 
