@@ -80,7 +80,7 @@ Em **Lançamentos → Importar extrato**. Escolha a conta (ou o cartão, para fa
 - **Esqueci minha senha:** na tela de login, o link pede o e-mail e manda um link para criar uma senha nova. O link abre o GRANA direto na tela "Definir nova senha", e a pessoa só entra no app depois de salvar a senha nova. A resposta é a mesma exista ou não a conta (ninguém descobre quais e-mails estão cadastrados). Para funcionar, `https://kafon-s-life.vercel.app` precisa estar em **Supabase → Authentication → URL Configuration** (Site URL e Redirect URLs); o texto do e-mail se edita em **Authentication → Email Templates**.
 - **Excluir minha conta:** em **Ajustes → Seus dados**. Pede para digitar EXCLUIR e apaga a conta e **todos** os dados na hora, sem volta (`api/excluir-conta.js`, que usa a chave de serviço no servidor; as tabelas apagam em cascata). O app Android/iPhone chama o mesmo endereço do site.
 - **Política de Privacidade:** `privacidade.html` (publicada em `https://kafon-s-life.vercel.app/privacidade.html`), linkada no login e nos Ajustes. Ela cita o contato por chamado no GitHub; se quiser um e-mail de contato, edite a seção 9 do arquivo.
-- **Ao sair da conta** (botão **Sair**, no final da aba Ajustes), o aparelho apaga os caches do app e as preferências de "último destino". O service worker nunca guarda respostas de outros endereços (como o Supabase), só os arquivos do próprio site.
+- **Ao sair da conta** (botão **Sair**, no final da aba Ajustes; se os dados não carregarem, o botão aparece junto de "Tentar novamente"), o aparelho apaga os caches do app e as preferências de "último destino". O service worker nunca guarda respostas de outros endereços (como o Supabase), só os arquivos do próprio site.
 
 ## Confirmação antes de excluir
 
