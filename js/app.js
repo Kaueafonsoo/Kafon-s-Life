@@ -8,7 +8,7 @@ const CATEGORIAS_PADRAO = ['Moradia', 'Alimentação', 'Transporte', 'Saúde', '
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-const EMOJIS_META = ['🎯', '🛡️', '✈️', '🏠', '🚗', '🎓', '💍', '🖥️', '🏋️', '🎸', '🐶', '🎁'];
+const EMOJIS_META = ['🎯', '🛡️', '✈️', '🏠', '🚗', '🎓', '💍', '🖥️', '🏋️', '🎸', '🐶', '🎁', '🛍️', '📱', '👟', '🎧', '💻'];
 
 const VALOR_OCULTO = 'R$ •••••';
 
@@ -1384,6 +1384,14 @@ function renderMetas() {
       deadlineText = `${daysLeft} dias restantes`;
     }
 
+    // Quanto falta e, com o prazo em dia, quanto guardar por mês (cada 30 dias, ou pedaço disso, conta como um mês).
+    const falta = meta.valorMeta - meta.valorAtual;
+    let faltaText = '';
+    if (pct < 100 && falta > 0) {
+      faltaText = `Falta ${formatCurrency(falta)}`;
+      if (daysLeft >= 0) faltaText += ` · guardar ${formatCurrency(falta / Math.max(1, Math.ceil(daysLeft / 30)))} por mês`;
+    }
+
     const card = document.createElement('div');
     card.className = 'goal-card';
     card.dataset.id = meta.id;
@@ -1398,6 +1406,7 @@ function renderMetas() {
         <span>Atual: <strong>${formatCurrency(meta.valorAtual)}</strong></span>
         <span>Meta: <strong>${formatCurrency(meta.valorMeta)}</strong></span>
       </div>
+      ${faltaText ? `<div class="goal-values"><span>${escapeHtml(faltaText)}</span></div>` : ''}
       <div class="goal-meta-row">
         <span>Previsto: ${formatDateDisplay(meta.dataPrevista)}</span>
         <span class="${deadlineClass}">${deadlineText}</span>
