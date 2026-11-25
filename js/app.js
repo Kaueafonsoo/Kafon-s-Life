@@ -288,6 +288,21 @@ function renderQuantoPosso() {
   const vendoMesAtual = currentYear === hoje.getFullYear() && currentMonth === hoje.getMonth();
   if (!vendoMesAtual) { card.hidden = true; return; }
 
+  // Conta sem nenhum lançamento ainda não tem o que calcular: o card fica neutro e convida a lançar, sem alarme.
+  const vazio = state.lancamentos.length === 0;
+  document.getElementById('hoje-chip').hidden = vazio;
+  document.getElementById('hoje-sub').hidden = vazio;
+  document.getElementById('hoje-novo').hidden = !vazio;
+  document.getElementById('hoje-detalhe').hidden = vazio;
+  if (vazio) {
+    card.dataset.status = 'vazio';
+    document.getElementById('hoje-valor').textContent = '—';
+    document.getElementById('hoje-dica').textContent = 'Lance sua primeira receita e sua primeira despesa e eu calculo quanto você pode gastar por dia.';
+    document.getElementById('hoje-antigas').hidden = true;
+    card.hidden = false;
+    return;
+  }
+
   const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
   const base = saldoParaGastar();
   const itens = contasAPagar({ lancamentos: state.lancamentos, cartoes: state.cartoes, faturas: state.faturas });
@@ -972,6 +987,7 @@ function initLancamentosTab() {
   document.getElementById('btn-novo-lancamento').addEventListener('click', () => openLancamentoModal(null));
   document.getElementById('btn-novo-lancamento-empty').addEventListener('click', () => openLancamentoModal(null));
   document.getElementById('fab-novo-lancamento').addEventListener('click', () => openLancamentoModal(null));
+  document.getElementById('hoje-novo').addEventListener('click', () => openLancamentoModal(null));
 
   document.querySelectorAll('.lanc-table thead th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
