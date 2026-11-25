@@ -990,13 +990,25 @@ function initLancamentosTab() {
   });
 
   document.getElementById('lanc-repeticao').addEventListener('change', updateRepeticaoUI);
-  document.getElementById('lanc-tipo').addEventListener('change', updateRepeticaoTipoUI);
+  document.getElementById('lanc-tipo').addEventListener('change', () => { updateRepeticaoTipoUI(); aplicarCategoriaPadraoDoTipo(); });
+  document.getElementById('lanc-categoria').addEventListener('change', () => { categoriaEscolhidaPelaPessoa = true; });
   document.getElementById('lanc-repeticao-qtd').addEventListener('input', updateRepeticaoFim);
   document.getElementById('lanc-data').addEventListener('change', updateRepeticaoFim);
 }
 
+/** Num lançamento novo, trocar o tipo ajusta a categoria de partida (Receita -> "Outros", Despesa -> a primeira da lista),
+    a não ser que a pessoa já tenha escolhido uma categoria: aí ela é respeitada. Editar um lançamento nunca troca a categoria. */
+let categoriaEscolhidaPelaPessoa = false;
+function aplicarCategoriaPadraoDoTipo() {
+  if (editingLancId || categoriaEscolhidaPelaPessoa) return;
+  const tipo = document.getElementById('lanc-tipo').value;
+  const padrao = tipo === 'receita' ? categoriaPadrao('receita', state.categorias) : state.categorias[0];
+  if (padrao) setSelectValue('lanc-categoria', padrao);
+}
+
 function openLancamentoModal(id, opcoes = {}) {
   editingLancId = id;
+  categoriaEscolhidaPelaPessoa = false;
   const form = document.getElementById('form-lancamento');
   form.reset();
 
@@ -1246,6 +1258,12 @@ function renderResumoOrcamento(gastoPorCategoria) {
   });
   if (planejado <= 0) { card.hidden = true; return; }
 
+  // A soma continua como está; o aviso abaixo só deixa claro que alguma categoria sozinha já passou do planejado.
+  const alerta = document.getElementById('budget-summary-alerta');
+  const texto = textoCategoriasEstouradas(categoriasEstouradas(state.categorias, state.orcamentos, gastoPorCategoria), formatCurrency);
+  alerta.textContent = texto;
+  alerta.hidden = !texto;
+
   const pct = (gasto / planejado) * 100;
   const status = pct > 100 ? 'over' : (pct >= ORCAMENTO_ALERTA_PCT ? 'warn' : 'ok');
   const pctEl = document.getElementById('budget-summary-pct');
@@ -1280,25 +1298,25 @@ function renderOrcamento() {
   state.categorias.forEach(cat => {
     const planejado = state.orcamentos[cat] || 0;
     const gasto = gastoPorCategoria[cat] || 0;
-    const pct = planejado > 0 ? (gasto / planejado) * 100 : (gasto > 0 ? 100 : 0);
-    let status = 'ok';
-    if (pct > 100) status = 'over';
-    else if (pct >= 80) status = 'warn';
+    const { temBarra: temPlano, pct, status } = linhaDoOrcamento(gasto, planejado);
 
     const item = document.createElement('div');
-    item.className = 'budget-item';
+    item.className = 'budget-item' + (temPlano ? '' : ' sem-plano');
+    // Sem valor planejado não há o que medir: nada de barra nem "de R$ 0,00", só o quanto foi gasto, em cinza.
+    const barra = temPlano ? `
+      <div class="budget-bar-wrap">
+        <div class="budget-bar ${status}" style="width:${Math.min(100, pct)}%"></div>
+      </div>` : '';
+    const valores = temPlano
+      ? `<strong>${formatCurrency(gasto)}</strong> de ${formatCurrency(planejado)}
+        ${status === 'over' ? `<br><span class="budget-over-note">Estourou ${formatCurrency(gasto - planejado)}</span>` : ''}`
+      : `${formatCurrency(gasto)} gastos · sem valor planejado`;
     item.innerHTML = `
       <div class="budget-cat">
         ${iconeCategoriaHtml(cat)}
         <span class="budget-cat-name">${escapeHtml(cat)}</span>
-      </div>
-      <div class="budget-bar-wrap">
-        <div class="budget-bar ${status}" style="width:${Math.min(100, pct)}%"></div>
-      </div>
-      <div class="budget-values">
-        <strong>${formatCurrency(gasto)}</strong> de ${formatCurrency(planejado)}
-        ${status === 'over' ? `<br><span class="budget-over-note">Estourou ${formatCurrency(gasto - planejado)}</span>` : ''}
-      </div>
+      </div>${barra}
+      <div class="budget-values">${valores}</div>
       <div class="budget-input-wrap">
         <span>R$</span>
         <input type="${oculto ? 'text' : 'number'}" class="budget-input" min="0" step="10"

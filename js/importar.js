@@ -315,11 +315,18 @@
         if (c) return { categoria: c, origem: 'regra' };
       }
     }
-    const padrao = acharCategoriaPorNome(['outros', 'diversos'], categorias) || categorias[0] || '';
-    return { categoria: padrao, origem: 'padrao' };
+    return { categoria: categoriaPadrao(tipo, categorias), origem: 'padrao' };
   }
 
-  const api = { lerValor, lerData, lerExtrato, lerOfx, lerCsv, atribuirImportIds, classificarLinhas, sugerirCategoria, hashTexto };
+  /** Categoria de partida quando não há pista melhor. Despesa: "Outros" (ou a primeira da lista).
+      Receita: também "Outros", mas se a lista não tiver, a ÚLTIMA — a primeira costuma ser algo de gasto, como "Moradia". */
+  function categoriaPadrao(tipo, categorias) {
+    const outros = acharCategoriaPorNome(['outros', 'diversos'], categorias);
+    if (tipo === 'receita') return outros || categorias[categorias.length - 1] || '';
+    return outros || categorias[0] || '';
+  }
+
+  const api = { lerValor, lerData, lerExtrato, lerOfx, lerCsv, atribuirImportIds, classificarLinhas, sugerirCategoria, categoriaPadrao, hashTexto };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else Object.assign(raiz, { lerExtratoBancario: lerExtrato, lerNumeroBR: lerValor, lerDataBR: lerData, atribuirImportIds, classificarLinhas, sugerirCategoria, hashTexto });
+  else Object.assign(raiz, { lerExtratoBancario: lerExtrato, lerNumeroBR: lerValor, lerDataBR: lerData, atribuirImportIds, classificarLinhas, sugerirCategoria, categoriaPadrao, hashTexto });
 })(typeof window !== 'undefined' ? window : globalThis);

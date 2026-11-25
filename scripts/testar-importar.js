@@ -229,4 +229,18 @@ t('categoria: se o usuário não tem "Outros", cai na primeira da lista', () => 
   assert.strictEqual(im.sugerirCategoria('Coisa estranha', 'despesa', [], ['Casa', 'Carro']).categoria, 'Casa');
 });
 
+t('categoria de receita importada: "Outros"; sem "Outros" na lista, a última (nunca a primeira, que costuma ser de gasto)', () => {
+  const r = (d, cats) => im.sugerirCategoria(d, 'receita', [], cats).categoria;
+  assert.strictEqual(r('PIX RECEBIDO FULANO', CATEGORIAS), 'Outros');
+  assert.strictEqual(r('PIX RECEBIDO FULANO', ['Moradia', 'Mercado', 'Lazer']), 'Lazer');
+  assert.strictEqual(r('PIX RECEBIDO FULANO', ['Moradia']), 'Moradia');
+  assert.strictEqual(r('PIX RECEBIDO FULANO', []), '');
+  // a despesa continua como antes: "Outros" ou a primeira
+  assert.strictEqual(im.sugerirCategoria('PIX ENVIADO FULANO', 'despesa', [], ['Moradia', 'Mercado', 'Lazer']).categoria, 'Moradia');
+  assert.strictEqual(im.categoriaPadrao('receita', CATEGORIAS), 'Outros');
+  assert.strictEqual(im.categoriaPadrao('despesa', CATEGORIAS), 'Outros');
+  // o que a pessoa já classificou antes e as palavras-chave continuam valendo
+  assert.strictEqual(im.sugerirCategoria('PAGAMENTO DE SALARIO', 'receita', [], ['Moradia', 'Salário', 'Lazer']).categoria, 'Salário');
+});
+
 console.log(`\n${ok} testes passaram.`);

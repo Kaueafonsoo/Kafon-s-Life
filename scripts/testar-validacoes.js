@@ -112,7 +112,45 @@ async function testesAssincronos() {
 }
 
 testesAssincronos().then(() => {
-  console.log(`\n${ok} testes passaram.`);
+  /* ---------- Orçamento: categoria estourada e categoria sem planejado ---------- */
+
+const moeda = (n) => 'R$ ' + n.toFixed(2).replace('.', ',');
+const CATS = ['Moradia', 'Alimentação', 'Transporte', 'Lazer'];
+
+t('categoria estourada: só entra quem tem planejado e passou dele, da que mais passou para a que menos', () => {
+  const r = v.categoriasEstouradas(CATS, { Moradia: 1500, Alimentação: 300, Transporte: 100 }, { Moradia: 1650, Alimentação: 62, Transporte: 120, Lazer: 650 });
+  assert.deepStrictEqual(r, [{ categoria: 'Moradia', passou: 150 }, { categoria: 'Transporte', passou: 20 }]);
+  assert.deepStrictEqual(v.categoriasEstouradas(CATS, { Moradia: 1500 }, { Moradia: 1500 }), []); // gastou exatamente o planejado: não estourou
+  assert.deepStrictEqual(v.categoriasEstouradas(CATS, {}, { Lazer: 650 }), []); // sem planejado nunca estoura
+});
+
+t('aviso de estouro: uma categoria, duas, e "e mais N" a partir da terceira', () => {
+  assert.strictEqual(v.textoCategoriasEstouradas([], moeda), '');
+  assert.strictEqual(v.textoCategoriasEstouradas([{ categoria: 'Moradia', passou: 150 }], moeda), 'Atenção: Moradia passou R$ 150,00 do planejado');
+  assert.strictEqual(
+    v.textoCategoriasEstouradas([{ categoria: 'Moradia', passou: 150 }, { categoria: 'Transporte', passou: 20 }], moeda),
+    'Atenção: Moradia passou R$ 150,00 e Transporte passou R$ 20,00 do planejado');
+  assert.strictEqual(
+    v.textoCategoriasEstouradas([{ categoria: 'A', passou: 3 }, { categoria: 'B', passou: 2 }, { categoria: 'C', passou: 1 }, { categoria: 'D', passou: 1 }], moeda),
+    'Atenção: A passou R$ 3,00 e B passou R$ 2,00 do planejado, e mais 2');
+  // modo privacidade: quem formata esconde os números, o texto continua o mesmo
+  assert.strictEqual(v.textoCategoriasEstouradas([{ categoria: 'Moradia', passou: 150 }], () => 'R$ •••••'), 'Atenção: Moradia passou R$ ••••• do planejado');
+});
+
+t('linha do orçamento: sem planejado (zero, vazio ou ausente) não tem barra; com planejado, nada muda', () => {
+  for (const p of [0, undefined, null, NaN]) {
+    const l = v.linhaDoOrcamento(650, p);
+    assert.strictEqual(l.temBarra, false);
+    assert.strictEqual(l.status, 'sem-plano');
+  }
+  assert.deepStrictEqual(v.linhaDoOrcamento(0, 0), { temBarra: false, pct: 0, status: 'sem-plano' });
+  assert.deepStrictEqual(v.linhaDoOrcamento(62, 300), { temBarra: true, pct: (62 / 300) * 100, status: 'ok' });
+  assert.strictEqual(v.linhaDoOrcamento(240, 300).status, 'warn'); // 80%
+  assert.strictEqual(v.linhaDoOrcamento(300, 300).status, 'warn'); // 100% ainda não estourou
+  assert.strictEqual(v.linhaDoOrcamento(300.01, 300).status, 'over');
+});
+
+console.log(`\n${ok} testes passaram.`);
 }).catch((erro) => {
   console.error('\nFALHOU:', erro.message);
   process.exit(1);

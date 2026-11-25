@@ -713,6 +713,8 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .budget-summary-valores strong { font-family: var(--font-display); font-size: 24px; color: var(--text); font-variant-numeric: tabular-nums; }
 .budget-summary-resto { font-size: 13.5px; font-weight: 600; }
 .budget-summary-resto.over { color: var(--danger); }
+.budget-summary-alerta { font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--danger); }
+.budget-summary-alerta[hidden] { display: none; }
 
 .budget-list { display: flex; flex-direction: column; gap: 12px; }
 .budget-item {
@@ -742,6 +744,8 @@ table.lanc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .budget-bar.over { background: var(--danger); }
 .budget-values { font-size: 13px; color: var(--text-muted); text-align: right; white-space: nowrap; }
 .budget-values strong { color: var(--text); font-weight: 700; }
+/* Categoria sem valor planejado: sem barra, o texto cinza ocupa o lugar dela */
+.budget-item.sem-plano .budget-values { grid-column: 2 / 4; text-align: right; color: var(--text-muted); white-space: normal; min-width: 0; }
 .budget-input-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .budget-input-wrap span { color: var(--text-faint); font-size: 13px; }
 .budget-input { width: 90px; text-align: right; }
@@ -1327,6 +1331,8 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
   .budget-input-wrap { grid-area: input; justify-content: flex-end; }
   .budget-bar-wrap { grid-area: bar; }
   .budget-values { grid-area: vals; text-align: left; }
+  .budget-item.sem-plano { grid-template-areas: "cat input" "vals vals"; }
+  .budget-item.sem-plano .budget-values { grid-column: auto; text-align: left; }
 }
 
 @media (max-width: 768px) {
