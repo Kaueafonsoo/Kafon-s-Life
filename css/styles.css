@@ -992,6 +992,9 @@ textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--prima
 .emoji-option.is-selected { border-color: var(--primary); background: var(--primary-light); }
 .form-row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
 .form-row-split > div { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+/* Formulário de meta: o campo numérico tem largura própria e empurrava a segunda coluna para fora no celular. */
+#modal-meta .form-row-split > div { min-width: 0; }
+#modal-meta .form-row-split input { width: 100%; min-width: 0; }
 .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
 .modal-actions-right { display: flex; gap: 8px; margin-left: auto; }
 
