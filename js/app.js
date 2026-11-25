@@ -288,8 +288,9 @@ function renderQuantoPosso() {
   const vendoMesAtual = currentYear === hoje.getFullYear() && currentMonth === hoje.getMonth();
   if (!vendoMesAtual) { card.hidden = true; return; }
 
-  // Conta sem nenhum lançamento ainda não tem o que calcular: o card fica neutro e convida a lançar, sem alarme.
-  const vazio = state.lancamentos.length === 0;
+  // Sem nenhuma receita e com todas as contas começando em zero, o app ainda não sabe quanto a pessoa tem (mesmo que já
+  // haja despesa): o card fica neutro e convida a lançar, sem alarme.
+  const vazio = !state.lancamentos.some(l => l.tipo === 'receita') && contasAtivas().every(c => c.saldoInicial === 0);
   document.getElementById('hoje-chip').hidden = vazio;
   document.getElementById('hoje-sub').hidden = vazio;
   document.getElementById('hoje-novo').hidden = !vazio;
@@ -297,7 +298,7 @@ function renderQuantoPosso() {
   if (vazio) {
     card.dataset.status = 'vazio';
     document.getElementById('hoje-valor').textContent = '—';
-    document.getElementById('hoje-dica').textContent = 'Lance sua primeira receita e sua primeira despesa e eu calculo quanto você pode gastar por dia.';
+    document.getElementById('hoje-dica').textContent = 'Ainda não sei quanto você tem. Lance sua receita ou o saldo da sua conta e eu calculo quanto você pode gastar por dia.';
     document.getElementById('hoje-antigas').hidden = true;
     card.hidden = false;
     return;
