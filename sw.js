@@ -40,6 +40,8 @@ self.addEventListener('fetch', (event) => {
   // Só o próprio site entra no cache. Respostas de outros endereços (o Supabase, com os dados financeiros da pessoa)
   // e as chamadas /api/ passam direto para a rede e nunca são guardadas.
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  // A página pública de exclusão de conta vem sempre da rede e não é guardada.
+  if (url.pathname === '/excluir-conta.html') return;
   event.respondWith(
     fetch(req)
       .then((response) => {
