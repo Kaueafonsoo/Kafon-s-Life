@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Excluir minha conta — GRANA</title>
+<link rel="icon" href="icons/icon-192-v2.png" />
+<style>
+  /* Mesmo visual do privacidade.html, mais o formulário. */
+  @font-face { font-family: "Work Sans"; font-weight: 400 700; font-style: normal; font-display: swap; src: url("fonts/work-sans.woff2") format("woff2"); }
+  :root { --bg: #FDFDFC; --text: #0B0B0B; --muted: #57554C; --line: #E4E2DC; --card: #F4F3EF; --borda-campo: #8C897F; --erro: oklch(50% 0.15 25); }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0F0D0B; --text: #F4F1EC; --muted: #B3AC9F; --line: #2C261E; --card: #171310; --borda-campo: #7A7264; --erro: oklch(72% 0.13 25); } }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  .topo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .topo img { width: 36px; height: 36px; border-radius: 10px; }
+  .topo strong { letter-spacing: 0.08em; font-size: 14px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.02em; }
+  h2 { font-size: 17px; margin: 34px 0 8px; letter-spacing: -0.01em; }
+  p, li { font-size: 15.5px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  a { color: inherit; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .caixa { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin: 12px 0; }
+  .caixa p:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  input { display: block; width: 100%; max-width: 420px; min-width: 0; margin: 0 0 14px; padding: 12px 14px; font: inherit; font-size: 16px; color: var(--text); background: var(--bg); border: 1px solid var(--borda-campo); border-radius: 12px; }
+  button { display: block; width: 100%; padding: 13px 20px; font: inherit; font-size: 15.5px; font-weight: 600; color: var(--bg); background: var(--text); border: 0; border-radius: 12px; cursor: pointer; }
+  button.perigo { color: #fff; background: oklch(50% 0.15 25); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  @media (min-width: 480px) { button { width: auto; min-width: 200px; } }
+  .erro { color: var(--erro); font-weight: 600; overflow-wrap: anywhere; }
+  .aviso { overflow-wrap: anywhere; }
+  .sucesso { font-weight: 600; }
+  .politica { display: inline-block; margin-top: 36px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="topo"><img src="icons/icon-192-v2.png" alt="" /><strong>GRANA</strong></div>
+  <h1>Excluir minha conta GRANA</h1>
+  <p>Aqui você apaga sua conta e todos os seus dados, para sempre. Não dá para desfazer.</p>
+
+  <h2>Pelo aplicativo</h2>
+  <ol>
+    <li>Abra o GRANA.</li>
+    <li>Toque na aba <strong>Ajustes</strong>.</li>
+    <li>Toque em <strong>Excluir minha conta</strong>.</li>
+    <li>Digite <strong>EXCLUIR</strong>.</li>
+    <li>Confirme em <strong>Excluir tudo</strong>.</li>
+  </ol>
+
+  <h2>Pelo site, sem abrir o app</h2>
+  <div class="caixa">
+    <noscript><p class="erro">Este formulário precisa do JavaScript ligado. Se não conseguir, escreva para granasuporte1@gmail.com.</p></noscript>
+
+    <!-- Os campos não têm "name" de propósito: se algo falhar, o navegador nunca coloca a senha no endereço da página. -->
+    <form id="form-entrar" method="post">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password" required />
+      <p class="erro" id="erro-entrar" role="alert" hidden></p>
+      <button type="submit" id="btn-entrar" disabled>Entrar para excluir</button>
+    </form>
+
+    <form id="form-excluir" method="post" hidden>
+      <p class="aviso">Isso apaga <strong>para sempre</strong> a conta <strong id="aviso-email"></strong> e todos os dados dela.</p>
+      <label for="confirma">Para confirmar, digite EXCLUIR</label>
+      <input type="text" id="confirma" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      <p class="erro" id="erro-excluir" role="alert" hidden></p>
+      <button type="submit" class="perigo" id="btn-excluir" disabled>Excluir tudo</button>
+    </form>
+
+    <p class="sucesso" id="sucesso" role="status" tabindex="-1" hidden>Conta excluída. Todos os seus dados foram apagados.</p>
+  </div>
+
+  <h2>Esqueci minha senha</h2>
+  <p>Abra <a href="https://kafon-s-life.vercel.app">https://kafon-s-life.vercel.app</a>, toque em <strong>Esqueci minha senha</strong> e use o link que chegar no seu e-mail para criar a senha nova. Depois, volte a esta página.</p>
+
+  <h2>Sem acesso à conta?</h2>
+  <p>Escreva para <a href="mailto:granasuporte1@gmail.com">granasuporte1@gmail.com</a>, <strong>a partir do e-mail do cadastro</strong>, pedindo a exclusão da conta. Respondemos o mais rápido possível.</p>
+
+  <h2>O que é apagado</h2>
+  <ul>
+    <li>Lançamentos</li>
+    <li>Contas</li>
+    <li>Cartões</li>
+    <li>Faturas</li>
+    <li>Transferências</li>
+    <li>Orçamentos</li>
+    <li>Metas</li>
+    <li>Configurações</li>
+    <li>A inscrição dos lembretes</li>
+    <li>O login (e-mail e senha)</li>
+  </ul>
+  <p><strong>O que pode ficar por um tempo limitado:</strong> cópias de segurança mantidas pelo provedor do banco de dados, até serem substituídas.</p>
+
+  <a class="politica" href="privacidade.html">Política de Privacidade</a>
+</main>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script>
+(function () {
+  'use strict';
+  const ERRO_GERAL = 'Não foi possível excluir agora. Tente de novo em alguns minutos ou escreva para granasuporte1@gmail.com';
+  const $ = (id) => document.getElementById(id);
+  let cliente = null;
+  let token = null; // o login fica só na memória desta página
+  let ocupado = false;
+
+  function mostrarErro(id, texto) {
+    $(id).textContent = texto;
+    $(id).hidden = !texto;
+  }
+
+  function palavraCerta() {
+    return $('confirma').value.trim().toUpperCase() === 'EXCLUIR';
+  }
+
+  function mensagemDeLogin(erro) {
+    const codigo = erro && erro.code;
+    const texto = (erro && erro.message) || '';
+    if (codigo === 'invalid_credentials' || /invalid login credentials/i.test(texto)) return 'E-mail ou senha incorretos.';
+    if (codigo === 'email_not_confirmed' || /email not confirmed/i.test(texto)) return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.';
+    return ERRO_GERAL;
+  }
+
+  async function entrar(evento) {
+    evento.preventDefault();
+    if (ocupado) return;
+    ocupado = true;
+    $('btn-entrar').disabled = true;
+    $('btn-entrar').textContent = 'Entrando…';
+    mostrarErro('erro-entrar', '');
+    try {
+      // Sem guardar a sessão: nada vai para o aparelho e o app aberto neste navegador não é afetado.
+      cliente = cliente || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+      const { data, error } = await cliente.auth.signInWithPassword({ email: $('email').value.trim(), password: $('senha').value });
+      if (error) throw error;
+      token = data.session.access_token;
+      $('senha').value = '';
+      $('aviso-email').textContent = data.user.email;
+      $('form-entrar').hidden = true;
+      $('form-excluir').hidden = false;
+      $('confirma').focus();
+    } catch (erro) {
+      mostrarErro('erro-entrar', mensagemDeLogin(erro));
+    } finally {
+      ocupado = false;
+      $('btn-entrar').disabled = false;
+      $('btn-entrar').textContent = 'Entrar para excluir';
+    }
+  }
+
+  /** Login vencido: volta ao primeiro passo, para a pessoa poder entrar de novo e tentar outra vez. */
+  function voltarAoLogin() {
+    token = null;
+    $('form-excluir').reset();
+    $('form-excluir').hidden = true;
+    $('form-entrar').hidden = false;
+    mostrarErro('erro-entrar', ERRO_GERAL);
+  }
+
+  async function excluir(evento) {
+    evento.preventDefault();
+    if (ocupado || !token || !palavraCerta()) return;
+    ocupado = true;
+    $('btn-excluir').disabled = true;
+    $('btn-excluir').textContent = 'Excluindo…';
+    $('confirma').readOnly = true;
+    mostrarErro('erro-excluir', '');
+    try {
+      const resposta = await fetch('/api/excluir-conta', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmar: true }),
+      });
+      if (resposta.status === 401) { voltarAoLogin(); return; }
+      const corpo = await resposta.json();
+      if (!resposta.ok || corpo.ok !== true) throw new Error('exclusão recusada');
+      token = null;
+      try { await cliente.auth.signOut({ scope: 'local' }); } catch (erro) { /* a conta já não existe */ }
+      $('form-excluir').hidden = true;
+      $('sucesso').hidden = false;
+      $('sucesso').focus();
+    } catch (erro) {
+      mostrarErro('erro-excluir', ERRO_GERAL);
+    } finally {
+      ocupado = false;
+      $('confirma').readOnly = false;
+      $('btn-excluir').disabled = !palavraCerta();
+      $('btn-excluir').textContent = 'Excluir tudo';
+    }
+  }
+
+  $('form-entrar').addEventListener('submit', entrar);
+  $('form-excluir').addEventListener('submit', excluir);
+  $('confirma').addEventListener('input', () => { $('btn-excluir').disabled = ocupado || !palavraCerta(); });
+  $('btn-entrar').disabled = false;
+})();
+</script>
+</body>
+</html>
