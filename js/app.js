@@ -873,8 +873,8 @@ function renderResumo() {
   saldoEl.classList.toggle('positive', saldo >= 0);
   saldoEl.classList.toggle('negative', saldo < 0);
 
-  // O resultado do mês não é o dinheiro das contas: a linha abaixo mostra os dois lado a lado (o valor é o mesmo da aba Contas).
-  document.getElementById('hero-nota').textContent = `Entrou menos saiu em ${MESES[currentMonth].toLowerCase()}. Não é o dinheiro que está nas contas.`;
+  // O saldo do mês não é o dinheiro das contas: a linha abaixo mostra os dois lado a lado (o valor é o mesmo da aba Contas).
+  document.getElementById('hero-nota').textContent = `Entrou - saiu em ${MESES[currentMonth].toLowerCase()}. Não é o dinheiro que está nas contas.`;
   document.getElementById('hero-contas-valor').textContent = formatCurrency(saldoTotalEmContas());
 
   renderInsight();
